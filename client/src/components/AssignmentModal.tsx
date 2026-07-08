@@ -102,7 +102,7 @@ export default function AssignmentModal({
             </option>
             {activeJobs.map((j) => (
               <option key={j.id} value={j.id}>
-                {j.name}
+                {j.code ? `${j.code} — ${j.name}` : j.name}
               </option>
             ))}
           </select>

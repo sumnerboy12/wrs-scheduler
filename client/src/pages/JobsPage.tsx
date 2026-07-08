@@ -8,6 +8,7 @@ import ImportModal, { type ImportField } from '../components/ImportModal';
 import { matchJobStatus } from '../lib/jobStatus';
 
 const JOB_IMPORT_FIELDS: ImportField[] = [
+  { key: 'code', label: 'Job code', aliases: ['job code', 'code', 'job #', 'job number', 'reference', 'ref'] },
   { key: 'name', label: 'Job name', required: true, aliases: ['name', 'job', 'job name', 'project', 'project name', 'title'] },
   { key: 'client_name', label: 'Client', aliases: ['client', 'client name', 'customer', 'customer name'] },
   { key: 'address', label: 'Address', aliases: ['address', 'site address', 'location'] },
@@ -78,6 +79,7 @@ export default function JobsPage() {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ width: 10, height: 10, borderRadius: '50%', background: job.color, flexShrink: 0 }} />
+                {job.code && <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{job.code}</span>}
                 <strong style={{ fontSize: 14 }}>{job.name}</strong>
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 4 }}>
@@ -97,7 +99,10 @@ export default function JobsPage() {
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <h1 style={{ margin: 0, fontSize: 20 }}>{detail.name}</h1>
+                <h1 style={{ margin: 0, fontSize: 20 }}>
+                  {detail.code && <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>{detail.code} &middot; </span>}
+                  {detail.name}
+                </h1>
                 <div style={{ color: 'var(--text-dim)', marginTop: 4 }}>{detail.client_name} &middot; {detail.address}</div>
                 <span
                   className="badge"
@@ -194,12 +199,13 @@ export default function JobsPage() {
         <ImportModal
           title="Import Jobs"
           fields={JOB_IMPORT_FIELDS}
-          helpText="Paste columns like Job name, Client, Address, Status, Win %, Notes. Phases can be added afterwards from the job's detail page."
+          helpText="Paste columns like Job code, Job name, Client, Address, Status, Win %, Notes. Phases can be added afterwards from the job's detail page."
           onClose={() => setShowImportJobs(false)}
           onImportRow={async (values) => {
             const { status } = values.status ? matchJobStatus(values.status) : { status: 'pipeline' as const };
             const probability = values.probability ? Number(values.probability.replace('%', '')) : null;
             await api.createJob({
+              code: values.code || null,
               name: values.name,
               client_name: values.client_name || null,
               address: values.address || null,

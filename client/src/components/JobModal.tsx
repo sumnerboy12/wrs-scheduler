@@ -10,6 +10,7 @@ interface Props {
 }
 
 export default function JobModal({ job, onClose, onSave, onDelete }: Props) {
+  const [code, setCode] = useState(job?.code ?? '');
   const [name, setName] = useState(job?.name ?? '');
   const [clientName, setClientName] = useState(job?.client_name ?? '');
   const [address, setAddress] = useState(job?.address ?? '');
@@ -29,6 +30,7 @@ export default function JobModal({ job, onClose, onSave, onDelete }: Props) {
     setError(null);
     try {
       await onSave({
+        code,
         name,
         client_name: clientName,
         address,
@@ -50,9 +52,15 @@ export default function JobModal({ job, onClose, onSave, onDelete }: Props) {
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h2>{job ? 'Edit Job' : 'New Job'}</h2>
 
-        <div className="field">
-          <label>Job name</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} autoFocus placeholder="e.g. Smith Residence Reroof" />
+        <div className="row">
+          <div className="field" style={{ flex: '0 0 140px' }}>
+            <label>Job code</label>
+            <input value={code ?? ''} onChange={(e) => setCode(e.target.value)} placeholder="e.g. J-1024" />
+          </div>
+          <div className="field">
+            <label>Job name</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} autoFocus placeholder="e.g. Smith Residence Reroof" />
+          </div>
         </div>
         <div className="row">
           <div className="field">

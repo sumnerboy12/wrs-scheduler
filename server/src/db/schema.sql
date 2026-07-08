@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS employees (
 
 CREATE TABLE IF NOT EXISTS jobs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT,
   name TEXT NOT NULL,
   client_name TEXT,
   address TEXT,

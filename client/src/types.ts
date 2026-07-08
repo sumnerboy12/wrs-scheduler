@@ -20,6 +20,7 @@ export interface Employee {
 
 export interface Job {
   id: number;
+  code: string | null;
   name: string;
   client_name: string | null;
   address: string | null;

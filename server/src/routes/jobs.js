@@ -23,15 +23,16 @@ router.get('/:id', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { name, client_name, address, status, probability, color, notes } = req.body;
+  const { code, name, client_name, address, status, probability, color, notes } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'name is required' });
 
   const result = db
     .prepare(
-      `INSERT INTO jobs (name, client_name, address, status, probability, color, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO jobs (code, name, client_name, address, status, probability, color, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
+      code || null,
       name.trim(),
       client_name || null,
       address || null,
@@ -50,12 +51,13 @@ router.put('/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM jobs WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'not found' });
 
-  const { name, client_name, address, status, probability, color, notes } = req.body;
+  const { code, name, client_name, address, status, probability, color, notes } = req.body;
   db.prepare(
     `UPDATE jobs SET
-       name = ?, client_name = ?, address = ?, status = ?, probability = ?, color = ?, notes = ?, updated_at = datetime('now')
+       code = ?, name = ?, client_name = ?, address = ?, status = ?, probability = ?, color = ?, notes = ?, updated_at = datetime('now')
      WHERE id = ?`
   ).run(
+    code ?? existing.code,
     name ?? existing.name,
     client_name ?? existing.client_name,
     address ?? existing.address,

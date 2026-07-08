@@ -20,8 +20,8 @@ if (employeeCount === 0) {
   );
 
   const insertJob = db.prepare(
-    `INSERT INTO jobs (name, client_name, address, status, probability, color, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO jobs (code, name, client_name, address, status, probability, color, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   );
 
   const today = new Date();
@@ -33,6 +33,7 @@ if (employeeCount === 0) {
   };
 
   const job1 = insertJob.run(
+    'J-1001',
     'Smith Residence Reroof',
     'John Smith',
     '12 Totara St, Tauranga',
@@ -43,6 +44,7 @@ if (employeeCount === 0) {
   ).lastInsertRowid;
 
   const job2 = insertJob.run(
+    'J-1002',
     'Harbourview Apartments',
     'Harbourview Body Corp',
     '4 Marina Dr, Mount Maunganui',
@@ -53,6 +55,7 @@ if (employeeCount === 0) {
   ).lastInsertRowid;
 
   const job3 = insertJob.run(
+    'J-1003',
     'Papamoa New Build',
     'Coastal Homes Ltd',
     '88 Papamoa Beach Rd, Papamoa',
