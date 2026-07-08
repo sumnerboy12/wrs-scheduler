@@ -22,4 +22,5 @@ if (!jobColumns.includes('code')) {
   db.exec('ALTER TABLE jobs ADD COLUMN code TEXT');
 }
 
+export { dataDir };
 export default db;

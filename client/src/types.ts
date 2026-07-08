@@ -67,6 +67,22 @@ export interface TimelinePayload {
   assignments: Assignment[];
 }
 
+export interface AuthUser {
+  id: number;
+  username: string;
+  is_admin: boolean;
+  must_change_password: boolean;
+}
+
+export interface ManagedUser {
+  id: number;
+  username: string;
+  is_admin: boolean;
+  active: boolean;
+  must_change_password: boolean;
+  created_at: string;
+}
+
 export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
   pipeline: 'Pipeline',
   quoted: 'Quoted',

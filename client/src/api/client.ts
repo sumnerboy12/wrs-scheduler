@@ -1,4 +1,4 @@
-import type { Assignment, Employee, Job, JobWithPhases, Phase, TimelinePayload } from '../types';
+import type { Assignment, AuthUser, Employee, Job, JobWithPhases, ManagedUser, Phase, TimelinePayload } from '../types';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -7,7 +7,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Request failed: ${res.status}`);
+    const err = new Error(body.error || `Request failed: ${res.status}`) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
   }
   if (res.status === 204) return undefined as T;
   return res.json();
@@ -15,6 +17,22 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   getTimeline: () => request<TimelinePayload>('/timeline'),
+
+  login: (username: string, password: string) =>
+    request<AuthUser>('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+  logout: () => request<void>('/auth/logout', { method: 'POST' }),
+  getMe: () => request<AuthUser>('/auth/me'),
+  changePassword: (current_password: string, new_password: string) =>
+    request<void>('/auth/change-password', { method: 'POST', body: JSON.stringify({ current_password, new_password }) }),
+
+  getUsers: () => request<ManagedUser[]>('/users'),
+  createUser: (data: { username: string; password: string; is_admin: boolean }) =>
+    request<ManagedUser>('/users', { method: 'POST', body: JSON.stringify(data) }),
+  updateUser: (id: number, data: Partial<{ is_admin: boolean; active: boolean }>) =>
+    request<ManagedUser>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  resetUserPassword: (id: number, password: string) =>
+    request<void>(`/users/${id}/reset-password`, { method: 'POST', body: JSON.stringify({ password }) }),
+  deleteUser: (id: number) => request<void>(`/users/${id}`, { method: 'DELETE' }),
 
   getEmployees: () => request<Employee[]>('/employees'),
   createEmployee: (data: Partial<Employee>) =>

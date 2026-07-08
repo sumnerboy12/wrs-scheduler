@@ -1,0 +1,149 @@
+import { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
+import { api } from '../api/client';
+import type { ManagedUser } from '../types';
+import { useAuth } from '../auth/AuthContext';
+import UserModal from '../components/UserModal';
+import ResetPasswordModal from '../components/ResetPasswordModal';
+
+export default function UsersPage() {
+  const { user } = useAuth();
+  const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [resetting, setResetting] = useState<ManagedUser | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    setLoading(true);
+    api.getUsers().then((data) => {
+      setUsers(data);
+      setLoading(false);
+    });
+  };
+
+  useEffect(load, []);
+
+  if (!user?.is_admin) return <Navigate to="/" replace />;
+
+  const toggleActive = async (u: ManagedUser) => {
+    setError(null);
+    try {
+      await api.updateUser(u.id, { active: !u.active });
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update user');
+    }
+  };
+
+  const toggleAdmin = async (u: ManagedUser) => {
+    setError(null);
+    try {
+      await api.updateUser(u.id, { is_admin: !u.is_admin });
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update user');
+    }
+  };
+
+  const remove = async (u: ManagedUser) => {
+    if (!confirm(`Remove login access for "${u.username}"?`)) return;
+    setError(null);
+    try {
+      await api.deleteUser(u.id);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to remove user');
+    }
+  };
+
+  return (
+    <div style={{ padding: 20, maxWidth: 900, margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h1 style={{ fontSize: 20, margin: 0 }}>Users</h1>
+        <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
+          + Add User
+        </button>
+      </div>
+
+      {error && <div style={{ color: 'var(--danger)', marginBottom: 12 }}>{error}</div>}
+
+      <div className="card">
+        {loading ? (
+          <div style={{ padding: 20 }}>Loading…</div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Admin</th>
+                <th>Status</th>
+                <th>Password</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id} style={{ opacity: u.active ? 1 : 0.5 }}>
+                  <td>{u.username}</td>
+                  <td>
+                    <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
+                      <input
+                        type="checkbox"
+                        style={{ width: 'auto' }}
+                        checked={u.is_admin}
+                        onChange={() => toggleAdmin(u)}
+                        disabled={u.id === user.id}
+                      />
+                      Admin
+                    </label>
+                  </td>
+                  <td>{u.active ? 'Active' : 'Inactive'}</td>
+                  <td>{u.must_change_password ? 'Must change on next login' : 'Set'}</td>
+                  <td style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn" onClick={() => setResetting(u)}>
+                      Reset password
+                    </button>
+                    <button className="btn" onClick={() => toggleActive(u)} disabled={u.id === user.id}>
+                      {u.active ? 'Deactivate' : 'Activate'}
+                    </button>
+                    <button className="btn btn-danger" onClick={() => remove(u)} disabled={u.id === user.id}>
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {users.length === 0 && (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 24 }}>
+                    No users yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {showAdd && (
+        <UserModal
+          onClose={() => setShowAdd(false)}
+          onSave={async (data) => {
+            await api.createUser(data);
+            load();
+          }}
+        />
+      )}
+      {resetting && (
+        <ResetPasswordModal
+          username={resetting.username}
+          onClose={() => setResetting(null)}
+          onSave={async (password) => {
+            await api.resetUserPassword(resetting.id, password);
+            load();
+          }}
+        />
+      )}
+    </div>
+  );
+}

@@ -119,6 +119,22 @@ from a registry, and `wrs-scheduler:latest` only exists locally, so that
 would fail. A stop/start just reuses whatever image is tagged
 `wrs-scheduler:latest` locally. The `data/` folder is untouched either way.
 
+## Logging in
+
+The app requires a login. The first time it starts with an empty database, it
+creates an initial admin account and prints its username and a random
+temporary password to the server's console/log output — look there (the
+`start.cmd` window, or `docker compose logs`) right after the first run. You'll
+be asked to set a real password on first login.
+
+From **Users** (visible to admins only) you can add more logins, promote/demote
+admins, deactivate or remove accounts, and reset anyone's password (which
+marks their account so they're asked to set a new one on next login).
+
+Note: sessions are kept in the server's memory, not the database, so
+restarting the app (a rebuild/redeploy, or a Windows reboot) signs everyone
+out and they'll need to log in again — nothing else is lost.
+
 ## How it works
 
 - **Schedule** — the main Gantt/resourcing view. Toggle between grouping

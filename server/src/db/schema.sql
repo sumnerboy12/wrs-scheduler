@@ -50,6 +50,17 @@ CREATE TABLE IF NOT EXISTS assignments (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  is_admin INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1,
+  must_change_password INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_phases_job ON phases(job_id);
 CREATE INDEX IF NOT EXISTS idx_assignments_phase ON assignments(phase_id);
 CREATE INDEX IF NOT EXISTS idx_assignments_employee ON assignments(employee_id);

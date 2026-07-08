@@ -1,12 +1,18 @@
 import express from 'express';
 import cors from 'cors';
+import session from 'express-session';
 import path from 'node:path';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
-import './db/index.js';
+import { dataDir } from './db/index.js';
 import './db/seed.js';
+import './db/seedAdmin.js';
 
+import { requireAuth } from './middleware/auth.js';
+import authRouter from './routes/auth.js';
+import usersRouter from './routes/users.js';
 import employeesRouter from './routes/employees.js';
 import jobsRouter from './routes/jobs.js';
 import phasesRouter from './routes/phases.js';
@@ -17,14 +23,31 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// Persisted so sessions aren't all invalidated by a server restart.
+const secretPath = path.join(dataDir, 'session-secret');
+if (!fs.existsSync(secretPath)) fs.writeFileSync(secretPath, crypto.randomBytes(32).toString('hex'));
+const sessionSecret = fs.readFileSync(secretPath, 'utf8').trim();
+
 app.use(cors());
 app.use(express.json());
+app.use(
+  session({
+    secret: sessionSecret,
+    name: 'wrs.sid',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { httpOnly: true, sameSite: 'lax', maxAge: 30 * 24 * 60 * 60 * 1000 },
+  })
+);
 
-app.use('/api/employees', employeesRouter);
-app.use('/api/jobs', jobsRouter);
-app.use('/api/phases', phasesRouter);
-app.use('/api/assignments', assignmentsRouter);
-app.use('/api/timeline', timelineRouter);
+app.use('/api/auth', authRouter);
+app.use('/api/users', usersRouter);
+
+app.use('/api/employees', requireAuth, employeesRouter);
+app.use('/api/jobs', requireAuth, jobsRouter);
+app.use('/api/phases', requireAuth, phasesRouter);
+app.use('/api/assignments', requireAuth, assignmentsRouter);
+app.use('/api/timeline', requireAuth, timelineRouter);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
