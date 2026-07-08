@@ -42,7 +42,8 @@
       "PowerShell($env:Path = \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\resources\\\\bin;\" + $env:Path; docker compose logs 2>&1 | Select-Object -Last 20)",
       "PowerShell($r = Invoke-WebRequest -Uri \"http://localhost:4000/\" -UseBasicParsing; Write-Host \"status:\" $r.StatusCode; $r2 = Invoke-RestMethod -Uri \"http://localhost:4000/api/timeline\"; Write-Host \"employees:\" $r2.employees.Count \"jobs:\" $r2.jobs.Count)",
       "PowerShell($env:Path = \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\resources\\\\bin;\" + $env:Path; docker compose restart 2>&1; Start-Sleep -Seconds 2; docker compose logs --tail 10 2>&1)",
-      "PowerShell($env:Path = \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\resources\\\\bin;\" + $env:Path; Set-Location \"C:\\\\Users\\\\BenJones\\\\OneDrive - Wayman Roofing Services\\\\Claude\"; docker compose down 2>&1)"
+      "PowerShell($env:Path = \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\resources\\\\bin;\" + $env:Path; Set-Location \"C:\\\\Users\\\\BenJones\\\\OneDrive - Wayman Roofing Services\\\\Claude\"; docker compose down 2>&1)",
+      "PowerShell(Get-ChildItem -Path . -Recurse -Depth 2 -Exclude node_modules | Where-Object { $_.FullName -notmatch 'node_modules' } | Select-Object FullName | Format-Table -HideTableHeaders -AutoSize | Out-String -Width 200)"
     ]
   }
 }

@@ -10,16 +10,47 @@ type GroupMode = 'employee' | 'job';
 
 const TENTATIVE_STATUSES = new Set(['pipeline', 'quoted']);
 
+const VIEW_STORAGE_KEY = 'wrs-schedule-view';
+
+interface PersistedView {
+  groupMode: GroupMode;
+  preset: ZoomPreset;
+  showClosed: boolean;
+  start: string;
+  end: string;
+}
+
+function loadPersistedView(): PersistedView | null {
+  try {
+    const raw = localStorage.getItem(VIEW_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as PersistedView) : null;
+  } catch {
+    return null;
+  }
+}
+
+function savePersistedView(state: PersistedView) {
+  try {
+    localStorage.setItem(VIEW_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // storage unavailable (e.g. private browsing) — view just won't persist
+  }
+}
+
 export default function SchedulePage() {
   const [data, setData] = useState<TimelinePayload | null>(null);
-  const [groupMode, setGroupMode] = useState<GroupMode>('employee');
-  const [preset, setPreset] = useState<ZoomPreset>('month');
-  const [showClosed, setShowClosed] = useState(false);
-  const [window, setWindow] = useState<{ start: Date; end: Date } | null>(() => presetWindow('month', new Date()));
+  const [groupMode, setGroupMode] = useState<GroupMode>(() => loadPersistedView()?.groupMode ?? 'employee');
+  const [preset, setPreset] = useState<ZoomPreset>(() => loadPersistedView()?.preset ?? 'month');
+  const [showClosed, setShowClosed] = useState(() => loadPersistedView()?.showClosed ?? false);
+  const [window, setWindow] = useState<{ start: Date; end: Date } | null>(() => {
+    const persisted = loadPersistedView();
+    if (persisted) return { start: new Date(persisted.start), end: new Date(persisted.end) };
+    return presetWindow('month', new Date());
+  });
   const [editing, setEditing] = useState<Assignment | null>(null);
   const [creating, setCreating] = useState<{ employeeId?: number; date?: string } | null>(null);
 
-  const centerRef = useRef(new Date());
+  const centerRef = useRef(window ? new Date((window.start.getTime() + window.end.getTime()) / 2) : new Date());
 
   const load = () => api.getTimeline().then(setData);
   useEffect(() => {
@@ -116,7 +147,16 @@ export default function SchedulePage() {
 
   const handleWindowChange = (start: Date, end: Date) => {
     centerRef.current = new Date((start.getTime() + end.getTime()) / 2);
+    savePersistedView({ groupMode, preset, showClosed, start: start.toISOString(), end: end.toISOString() });
   };
+
+  // Persist immediately when a toggle changes, without waiting for the
+  // timeline to also report a range change.
+  useEffect(() => {
+    if (!window) return;
+    savePersistedView({ groupMode, preset, showClosed, start: window.start.toISOString(), end: window.end.toISOString() });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupMode, preset, showClosed]);
 
   const handleItemDoubleClick = (itemId: number | string) => {
     if (typeof itemId === 'string') return; // job summary bar — not an editable assignment
