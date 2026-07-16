@@ -94,11 +94,13 @@ export default function SchedulePage() {
       const jobPhases = data.phases.filter((p) => p.job_id === job.id);
       groups.push({
         id: `job-${job.id}`,
-        content: `${job.name}`,
+        content: `${job.name}<br><small style="color:var(--text-dim)">${JOB_STATUS_LABELS[job.status]}</small>`,
         nestedGroups: jobPhases.map((p) => `phase-${p.id}`),
+        className: 'tl-job-group',
+        style: `--job-color: ${job.color}`,
       });
       for (const phase of jobPhases) {
-        groups.push({ id: `phase-${phase.id}`, content: phase.name });
+        groups.push({ id: `phase-${phase.id}`, content: phase.name, className: 'tl-phase-group', style: `--job-color: ${job.color}` });
       }
 
       // A consolidated bar on the job's own (parent) row, spanning every phase.
@@ -108,7 +110,7 @@ export default function SchedulePage() {
         const maxEnd = jobPhases.reduce((max, p) => (p.end_date > max ? p.end_date : max), jobPhases[0].end_date);
         const staffCount = new Set(visibleAssignments.filter((a) => a.job_id === job.id).map((a) => a.employee_id)).size;
 
-        const classes = ['tl-item'];
+        const classes = ['tl-item', 'job-summary'];
         if (TENTATIVE_STATUSES.has(job.status)) classes.push('tentative');
         classes.push(`status-${job.status}`);
 
@@ -129,7 +131,9 @@ export default function SchedulePage() {
     for (const a of visibleAssignments) {
       const employee = employeesById.get(a.employee_id);
       const job = jobsById.get(a.job_id!);
-      items.push(buildItem(a, `phase-${a.phase_id}`, employee?.name ?? '', job));
+      const item = buildItem(a, `phase-${a.phase_id}`, employee?.name ?? '', job);
+      item.className += ' staff-bar';
+      items.push(item);
     }
 
     return { groups, items };
@@ -187,8 +191,14 @@ export default function SchedulePage() {
     } else if (groupMode === 'job' && groupId.startsWith('phase-')) {
       patch.phase_id = Number(groupId.replace('phase-', ''));
     }
-    await api.updateAssignment(itemId, patch);
-    load();
+    try {
+      await api.updateAssignment(itemId, patch);
+    } finally {
+      // Always resync from the server, even on failure — otherwise a
+      // rejected save leaves the bar sitting at its optimistic (wrong)
+      // position with no visible indication anything went wrong.
+      load();
+    }
   };
 
   if (!data) {
@@ -209,18 +219,19 @@ export default function SchedulePage() {
           flexWrap: 'wrap',
         }}
       >
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div className="toolbar-group">
           {(['quarter', 'month', 'week', 'day'] as ZoomPreset[]).map((p) => (
             <button key={p} className="btn" onClick={() => applyPreset(p)} style={{ background: preset === p ? 'var(--accent)' : undefined, borderColor: preset === p ? 'var(--accent)' : undefined }}>
               {p[0].toUpperCase() + p.slice(1)}
             </button>
           ))}
-          <button className="btn" onClick={goToday}>
-            Today
-          </button>
         </div>
 
-        <div style={{ display: 'flex', gap: 4 }}>
+        <button className="btn" onClick={goToday}>
+          Today
+        </button>
+
+        <div className="toolbar-group">
           <button
             className="btn"
             onClick={() => setGroupMode('employee')}

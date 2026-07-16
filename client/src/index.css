@@ -100,6 +100,24 @@ th {
   border-color: var(--danger);
 }
 
+.toolbar-group {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.toolbar-group .btn {
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.toolbar-group .btn:hover {
+  border-color: var(--border);
+}
+
 .card {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -197,6 +215,70 @@ th {
   background: var(--panel) !important;
 }
 
+.vis-labelset .vis-label.vis-nesting-group:hover {
+  background: var(--border) !important;
+}
+
+/* vis-timeline recycles label DOM nodes on collapse/expand and doesn't
+   always reset alignment on the reused node — pin it so phase labels
+   can't inherit a stray right-aligned state. */
+.vis-labelset .vis-label .vis-inner {
+  text-align: left !important;
+}
+
+.vis-labelset .vis-label.tl-job-group {
+  border-left: 3px solid var(--job-color, var(--border));
+}
+
+.vis-labelset .vis-label.tl-job-group .vis-inner {
+  padding-top: 5px;
+  padding-bottom: 5px;
+  line-height: 1.4;
+}
+
+.vis-labelset .vis-label.tl-phase-group {
+  /* vis-timeline classifies nesting depth per-redraw and can drop the
+     vis-group-level-0 class on a collapse/expand cycle, falling through
+     to its own indent/width defaults for "unknown" levels. Pin our own
+     fixed values so the row looks identical on every redraw. */
+  padding-left: 0 !important;
+  border-left: 3px solid color-mix(in srgb, var(--job-color, var(--border)) 45%, transparent);
+}
+
+.vis-labelset .vis-label.tl-phase-group .vis-inner {
+  display: inline-block !important;
+  width: auto !important;
+  color: var(--text-dim);
+  font-size: 12.5px;
+}
+
+/* Collapse/expand caret — a single glyph that rotates rather than the
+   default swapped triangle characters, with a hover affordance since
+   the whole row toggles the group. */
+.vis-label.vis-nesting-group:before {
+  content: "\25B6" !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 16px !important;
+  height: 16px;
+  margin-right: 3px;
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 9px;
+  vertical-align: middle;
+  transition: transform 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.vis-label.vis-nesting-group.expanded:before {
+  transform: rotate(90deg);
+}
+
+.vis-label.vis-nesting-group:hover:before {
+  color: var(--text);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
 .vis-foreground .vis-group.vis-nested-group {
   background: var(--panel) !important;
 }
@@ -212,16 +294,26 @@ th {
   border-color: var(--border) !important;
 }
 
-.vis-time-axis .vis-text {
+.vis-time-axis .vis-text.vis-major {
+  color: var(--text) !important;
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+  padding: 6px 10px 4px !important;
+}
+
+.vis-time-axis .vis-text.vis-minor {
   color: var(--text-dim) !important;
+  font-size: 12px;
+  padding: 4px 8px !important;
 }
 
 .vis-time-axis .vis-grid.vis-minor {
-  border-color: #232c42 !important;
+  border-color: #202940 !important;
 }
 
 .vis-time-axis .vis-grid.vis-major {
-  border-color: var(--border) !important;
+  border-color: #3c4a70 !important;
 }
 
 .vis-current-time {
@@ -255,6 +347,32 @@ th {
 .vis-item.tl-item.status-complete,
 .vis-item.tl-item.status-on_hold {
   opacity: 0.55;
+}
+
+.vis-item.tl-item.job-summary {
+  background-color: color-mix(in srgb, var(--job-color, var(--accent)) 30%, var(--panel));
+  border-width: 2px;
+  border-radius: 6px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.vis-item.tl-item.job-summary .vis-item-content {
+  color: var(--text);
+}
+
+/* Individual staff bars nested under a job's phases — lighter and more
+   rounded than the job-summary rollup so the two read as different tiers,
+   but still tinted with the job's color like everything else in the row. */
+.vis-item.tl-item.staff-bar {
+  background-color: color-mix(in srgb, var(--job-color, var(--accent)) 16%, var(--panel));
+  border-width: 1px;
+  border-radius: 6px;
+  color: var(--text);
+}
+
+.vis-item.tl-item.staff-bar .vis-item-content {
+  color: var(--text);
 }
 
 .vis-item.tl-item.conflict {

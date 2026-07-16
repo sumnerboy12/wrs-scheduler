@@ -7,6 +7,7 @@ export interface TLGroup {
   id: string;
   content: string;
   className?: string;
+  style?: string;
   nestedGroups?: string[];
   subgroupStack?: boolean;
 }
