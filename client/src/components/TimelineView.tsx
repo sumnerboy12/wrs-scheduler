@@ -61,6 +61,11 @@ export default function TimelineView({
       zoomMax: 1000 * 60 * 60 * 24 * 400, // ~13 months
       orientation: 'top',
       margin: { item: 6, axis: 10 },
+      // Pass the restored range up front — if the widget mounts with no
+      // configured range, vis-timeline auto-fits to the item data on its
+      // first (deferred) redraw and can silently overwrite a range set
+      // via setWindow() moments earlier, desyncing the view from `preset`.
+      ...(windowRange ? { start: windowRange.start, end: windowRange.end } : {}),
       editable: {
         add: false,
         updateTime: true,
