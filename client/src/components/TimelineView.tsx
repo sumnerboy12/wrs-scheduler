@@ -16,12 +16,31 @@ export interface TLItem {
   id: number | string;
   group: string;
   content: string;
-  start: string;
-  end: string;
+  // Real Date objects, not ISO strings — a bare "YYYY-MM-DD" string parses
+  // as UTC midnight per spec, which mis-anchors every bar by the local
+  // UTC offset and corrupts drag/resize math. Callers must build these
+  // with parseISODateLocal (see lib/dates.ts).
+  start: Date;
+  end: Date;
   className?: string;
   title?: string;
   style?: string;
   editable?: boolean;
+}
+
+// vis-timeline's default snap rounds to the nearest 12-hour boundary at
+// day/week zoom (noon or midnight) and to even coarser boundaries at
+// wider zooms — none of which line up with this app's day-only data
+// model. Always snap to the nearest local calendar day instead, so a
+// drag or resize lands on exactly the day it looks like it landed on,
+// regardless of zoom level.
+function snapToNearestLocalDay(date: Date): Date {
+  const snapped = new Date(date);
+  if (snapped.getHours() >= 12) {
+    snapped.setDate(snapped.getDate() + 1);
+  }
+  snapped.setHours(0, 0, 0, 0);
+  return snapped;
 }
 
 interface Props {
@@ -73,6 +92,7 @@ export default function TimelineView({
         updateGroup: true,
         remove: false,
       },
+      snap: (date: Date) => snapToNearestLocalDay(date),
       onMove: (item: any, callback: (item: any) => void) => {
         callbacksRef.current.onItemMoved(item.id, item.start, item.end, item.group);
         callback(item);

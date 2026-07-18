@@ -4,7 +4,7 @@ import type { Assignment, Job, TimelinePayload } from '../types';
 import { JOB_STATUS_LABELS } from '../types';
 import TimelineView, { type TLGroup, type TLItem } from '../components/TimelineView';
 import AssignmentModal from '../components/AssignmentModal';
-import { isoDatePlusOne, presetWindow, toISODate, type ZoomPreset } from '../lib/dates';
+import { addDays, isoDatePlusOne, parseISODateLocal, presetWindow, toISODate, type ZoomPreset } from '../lib/dates';
 
 type GroupMode = 'employee' | 'job';
 
@@ -118,8 +118,8 @@ export default function SchedulePage() {
           id: `job-summary-${job.id}`,
           group: `job-${job.id}`,
           content: `${jobPhases.length} phase${jobPhases.length === 1 ? '' : 's'}${staffCount ? ` · ${staffCount} staff` : ''}`,
-          start: minStart,
-          end: isoDatePlusOne(maxEnd),
+          start: parseISODateLocal(minStart),
+          end: parseISODateLocal(isoDatePlusOne(maxEnd)),
           className: classes.join(' '),
           title: `${job.name} · ${minStart} – ${maxEnd}`,
           style: `--job-color: ${job.color}`,
@@ -181,7 +181,7 @@ export default function SchedulePage() {
     if (typeof itemId === 'string') return; // job summary bar — not draggable
     const assignment = data?.assignments.find((a) => a.id === itemId);
     if (!assignment) return;
-    const endInclusive = toISODate(new Date(end.getTime() - 24 * 60 * 60 * 1000));
+    const endInclusive = toISODate(addDays(end, -1));
     const patch: Partial<Assignment> = {
       start_date: toISODate(start),
       end_date: endInclusive,
@@ -339,8 +339,8 @@ function buildItem(a: Assignment, group: string, content: string, job: Job | und
     id: a.id,
     group,
     content,
-    start: a.start_date,
-    end: isoDatePlusOne(a.end_date),
+    start: parseISODateLocal(a.start_date),
+    end: parseISODateLocal(isoDatePlusOne(a.end_date)),
     className: classes.join(' '),
     title: `${content}${a.allocation_pct < 100 ? ` · ${a.allocation_pct}%` : ''}${a.conflict ? ' · OVER-ALLOCATED' : ''}`,
     style: `--job-color: ${job?.color ?? '#4f7cff'}`,

@@ -46,6 +46,17 @@ export function isoDatePlusOne(isoDate: string): string {
   return toISODate(addDays(d, 1));
 }
 
+// Parses a "YYYY-MM-DD" string as local midnight. Never hand vis-timeline
+// a bare date string directly — per the ECMAScript spec, date-only ISO
+// strings parse as UTC, which anchors every item several hours off local
+// midnight (a whole half-day in NZ). That mis-anchoring is invisible at
+// a glance but corrupts every drag/resize, since vis-timeline computes
+// the new start/end from that wrong anchor plus a pixel-derived offset.
+export function parseISODateLocal(isoDate: string): Date {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
 export type ZoomPreset = 'day' | 'week' | 'month' | 'quarter';
 
 export function presetWindow(preset: ZoomPreset, center: Date): { start: Date; end: Date } {
