@@ -57,6 +57,14 @@ export function parseISODateLocal(isoDate: string): Date {
   return new Date(year, month - 1, day);
 }
 
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// "2026-07-19" -> "19 Jul"
+export function formatShortDate(isoDate: string): string {
+  const d = parseISODateLocal(isoDate);
+  return `${d.getDate()} ${MONTH_ABBR[d.getMonth()]}`;
+}
+
 export type ZoomPreset = 'day' | 'week' | 'month' | 'quarter';
 
 export function presetWindow(preset: ZoomPreset, center: Date): { start: Date; end: Date } {

@@ -225,9 +225,24 @@ tbody tr:nth-child(even) {
 
 /* vis-timeline recycles label DOM nodes on collapse/expand and doesn't
    always reset alignment on the reused node — pin it so phase labels
-   can't inherit a stray right-aligned state. */
+   can't inherit a stray right-aligned state. vis-timeline also flips
+   .vis-panel.vis-left to `direction: rtl` internally (a trick to put its
+   scrollbar on the left) and resets it back to ltr only on `.vis-content`
+   — pin direction as well as text-align, and at both the labelset and
+   per-label level, so nothing above `.vis-inner` can leak a stray
+   right-to-left context into it. */
+.vis-labelset {
+  direction: ltr !important;
+}
+
+.vis-labelset .vis-label {
+  text-align: left !important;
+  direction: ltr !important;
+}
+
 .vis-labelset .vis-label .vis-inner {
   text-align: left !important;
+  direction: ltr !important;
 }
 
 .vis-labelset .vis-label.tl-job-group {
@@ -235,9 +250,9 @@ tbody tr:nth-child(even) {
 }
 
 .vis-labelset .vis-label.tl-job-group .vis-inner {
-  padding-top: 5px;
-  padding-bottom: 5px;
-  line-height: 1.4;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  line-height: 1.5;
 }
 
 .vis-labelset .vis-label.tl-phase-group {
@@ -249,11 +264,63 @@ tbody tr:nth-child(even) {
   border-left: 3px solid color-mix(in srgb, var(--job-color, var(--border)) 45%, transparent);
 }
 
-.vis-labelset .vis-label.tl-phase-group .vis-inner {
-  display: inline-block !important;
+/* The real cause of phase rows drifting right after a collapse/expand:
+   vis-timeline's own stylesheet computes a "nesting level" per redraw and
+   applies `padding-left` (0 to 150px) straight onto `.vis-inner`, keyed by
+   classes like `.vis-group-level-9` — a *different element* than the
+   `.tl-phase-group` label we already zero out `padding-left` on above,
+   and at higher selector specificity (5 class-selectors vs. our 4) that
+   our stylesheet's load order can't beat even with `!important`. Chaining
+   .tl-phase-group twice is a deliberate specificity bump (repeating a
+   class in a selector counts it twice) to clear that bar regardless of
+   which level vis-timeline lands on. */
+.vis-labelset .vis-label.tl-phase-group.tl-phase-group .vis-inner {
+  padding-left: 0 !important;
+  /* display:block (not inline-block) deliberately — an inline-block box's
+     own horizontal position is governed by its parent's text-align, and
+     vis-timeline recycling this row's DOM on collapse/expand can leave it
+     right-aligned. A block box ignores text-align for its own position,
+     so it can't drift regardless of what the parent's alignment does. */
+  display: block !important;
   width: auto !important;
+  line-height: 1.5;
+}
+
+/* Phase row content — sequence number in a round pill, bold name, and a
+   dim date-range/staff-count line underneath. Indented 18px to line up
+   with the job header's own text start (10px colour dot + 8px gap). */
+.tl-phase-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 18px;
+}
+
+.tl-phase-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--job-color, var(--accent)) 35%, var(--panel));
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.tl-phase-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.tl-phase-meta {
+  padding-left: 18px;
+  margin-top: 2px;
+  font-size: 11px;
   color: var(--text-dim);
-  font-size: 12.5px;
 }
 
 /* Collapse/expand caret — a single glyph that rotates rather than the

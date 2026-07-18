@@ -92,6 +92,13 @@ export default function TimelineView({
         updateGroup: true,
         remove: false,
       },
+      // vis-timeline runs all item/group `content` HTML through an XSS
+      // sanitizer by default, which strips class and style attributes —
+      // silently dropping any custom styling in group labels. We build
+      // every content string ourselves (SchedulePage.tsx) and escape all
+      // user-entered text via escapeHtml() before interpolating it, so
+      // it's safe to trust here.
+      xss: { disabled: true },
       snap: (date: Date) => snapToNearestLocalDay(date),
       onMove: (item: any, callback: (item: any) => void) => {
         callbacksRef.current.onItemMoved(item.id, item.start, item.end, item.group);

@@ -4,7 +4,8 @@ import type { Assignment, Job, TimelinePayload } from '../types';
 import { JOB_STATUS_LABELS } from '../types';
 import TimelineView, { type TLGroup, type TLItem } from '../components/TimelineView';
 import AssignmentModal from '../components/AssignmentModal';
-import { addDays, isoDatePlusOne, parseISODateLocal, presetWindow, toISODate, type ZoomPreset } from '../lib/dates';
+import { addDays, formatShortDate, isoDatePlusOne, parseISODateLocal, presetWindow, toISODate, type ZoomPreset } from '../lib/dates';
+import { escapeHtml } from '../lib/html';
 
 type GroupMode = 'employee' | 'job';
 
@@ -78,13 +79,14 @@ export default function SchedulePage() {
         .filter((e) => e.active)
         .map((e, idx) => ({
           id: `emp-${e.id}`,
-          content: `${e.name}${e.role ? `<br><small style="color:var(--text-dim)">${e.role}</small>` : ''}`,
+          content: `${escapeHtml(e.name)}${e.role ? `<br><small style="color:var(--text-dim)">${escapeHtml(e.role)}</small>` : ''}`,
           className: idx % 2 === 1 ? 'tl-row-alt' : undefined,
         }));
 
       const items: TLItem[] = visibleAssignments.map((a) => {
         const job = jobsById.get(a.job_id!);
-        const item = buildItem(a, `emp-${a.employee_id}`, `${job?.name ?? ''} — ${a.phase_name}`, job);
+        const label = `${job ? escapeHtml(job.name) : ''} — ${a.phase_name ? escapeHtml(a.phase_name) : ''}`;
+        const item = buildItem(a, `emp-${a.employee_id}`, label, job);
         item.className += ' staff-bar';
         return item;
       });
@@ -104,15 +106,30 @@ export default function SchedulePage() {
       const altClass = jobIndex % 2 === 1 ? ' tl-row-alt' : '';
       jobIndex++;
       const jobPhases = data.phases.filter((p) => p.job_id === job.id);
+      const jobStaffCount = new Set(visibleAssignments.filter((a) => a.job_id === job.id).map((a) => a.employee_id)).size;
+
+      // Match the Jobs page's own list styling exactly: 10px dot, 12px dim
+      // code, 14px bold name on line one; 12px dim meta line underneath.
+      const jobSwatch = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${job.color};margin-right:8px;"></span>`;
+      const jobCodePrefix = job.code ? `<span style="font-size:12px;color:var(--text-dim);">${escapeHtml(job.code)}</span> ` : '';
+      const jobStatusPill = `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.02em;background:${job.color};color:#fff;">${JOB_STATUS_LABELS[job.status]}</span>`;
+      const jobMetaLine = `${jobStatusPill} · ${job.client_name ? escapeHtml(job.client_name) : 'No client set'}`;
+      const jobContent = `${jobSwatch}${jobCodePrefix}<strong style="font-size:14px;">${escapeHtml(job.name)}</strong><div style="font-size:12px;color:var(--text-dim);margin-top:4px;">${jobMetaLine}</div>`;
+
       groups.push({
         id: `job-${job.id}`,
-        content: `${job.name}<br><small style="color:var(--text-dim)">${JOB_STATUS_LABELS[job.status]}</small>`,
+        content: jobContent,
         nestedGroups: jobPhases.map((p) => `phase-${p.id}`),
         className: `tl-job-group${altClass}`,
         style: `--job-color: ${job.color}`,
       });
       for (const phase of jobPhases) {
-        groups.push({ id: `phase-${phase.id}`, content: phase.name, className: `tl-phase-group${altClass}`, style: `--job-color: ${job.color}` });
+        const phaseStaffCount = new Set(
+          visibleAssignments.filter((a) => a.phase_id === phase.id).map((a) => a.employee_id),
+        ).size;
+        const phaseMetaLine = `${formatShortDate(phase.start_date)} – ${formatShortDate(phase.end_date)}${phaseStaffCount ? ` · ${phaseStaffCount} staff` : ''}`;
+        const phaseContent = `<div class="tl-phase-title-row"><span class="tl-phase-index">${phase.sequence}</span><strong class="tl-phase-name">${escapeHtml(phase.name)}</strong></div><div class="tl-phase-meta">${phaseMetaLine}</div>`;
+        groups.push({ id: `phase-${phase.id}`, content: phaseContent, className: `tl-phase-group${altClass}`, style: `--job-color: ${job.color}` });
       }
 
       // A consolidated bar on the job's own (parent) row, spanning every phase.
@@ -120,7 +137,6 @@ export default function SchedulePage() {
       if (jobPhases.length > 0) {
         const minStart = jobPhases.reduce((min, p) => (p.start_date < min ? p.start_date : min), jobPhases[0].start_date);
         const maxEnd = jobPhases.reduce((max, p) => (p.end_date > max ? p.end_date : max), jobPhases[0].end_date);
-        const staffCount = new Set(visibleAssignments.filter((a) => a.job_id === job.id).map((a) => a.employee_id)).size;
 
         const classes = ['tl-item', 'job-summary'];
         if (TENTATIVE_STATUSES.has(job.status)) classes.push('tentative');
@@ -129,7 +145,7 @@ export default function SchedulePage() {
         items.push({
           id: `job-summary-${job.id}`,
           group: `job-${job.id}`,
-          content: `${jobPhases.length} phase${jobPhases.length === 1 ? '' : 's'}${staffCount ? ` · ${staffCount} staff` : ''}`,
+          content: `${jobPhases.length} phase${jobPhases.length === 1 ? '' : 's'}${jobStaffCount ? ` · ${jobStaffCount} staff` : ''}`,
           start: parseISODateLocal(minStart),
           end: parseISODateLocal(isoDatePlusOne(maxEnd)),
           className: classes.join(' '),
@@ -146,7 +162,7 @@ export default function SchedulePage() {
       // Colour by employee, not job — the job's colour already carries the
       // phase rows and summary bar, so tinting staff bars by employee is
       // what lets you tell who's on a phase without opening it.
-      const item = buildItem(a, `phase-${a.phase_id}`, employee?.name ?? '', job, employee?.color);
+      const item = buildItem(a, `phase-${a.phase_id}`, employee ? escapeHtml(employee.name) : '', job, employee?.color);
       item.className += ' staff-bar';
       items.push(item);
     }

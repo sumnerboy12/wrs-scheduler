@@ -82,9 +82,25 @@ export default function JobsPage() {
                 {job.code && <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{job.code}</span>}
                 <strong style={{ fontSize: 14 }}>{job.name}</strong>
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 4 }}>
-                {job.client_name || 'No client set'} &middot; {JOB_STATUS_LABELS[job.status]}
-                {job.status === 'pipeline' && job.probability != null ? ` (${job.probability}%)` : ''}
+              <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    padding: '1px 7px',
+                    borderRadius: 999,
+                    fontSize: 10,
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.02em',
+                    background: job.color,
+                    color: '#fff',
+                  }}
+                >
+                  {JOB_STATUS_LABELS[job.status]}
+                </span>
+                <span>&middot;</span>
+                <span>{job.client_name || 'No client set'}</span>
+                {job.status === 'pipeline' && job.probability != null && <span>{job.probability}%</span>}
               </div>
             </div>
           ))}
