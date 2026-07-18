@@ -80,7 +80,9 @@ export default function SchedulePage() {
 
       const items: TLItem[] = visibleAssignments.map((a) => {
         const job = jobsById.get(a.job_id!);
-        return buildItem(a, `emp-${a.employee_id}`, `${job?.name ?? ''} — ${a.phase_name}`, job);
+        const item = buildItem(a, `emp-${a.employee_id}`, `${job?.name ?? ''} — ${a.phase_name}`, job);
+        item.className += ' staff-bar';
+        return item;
       });
 
       return { groups, items };
@@ -131,7 +133,10 @@ export default function SchedulePage() {
     for (const a of visibleAssignments) {
       const employee = employeesById.get(a.employee_id);
       const job = jobsById.get(a.job_id!);
-      const item = buildItem(a, `phase-${a.phase_id}`, employee?.name ?? '', job);
+      // Colour by employee, not job — the job's colour already carries the
+      // phase rows and summary bar, so tinting staff bars by employee is
+      // what lets you tell who's on a phase without opening it.
+      const item = buildItem(a, `phase-${a.phase_id}`, employee?.name ?? '', job, employee?.color);
       item.className += ' staff-bar';
       items.push(item);
     }
@@ -329,7 +334,7 @@ export default function SchedulePage() {
   );
 }
 
-function buildItem(a: Assignment, group: string, content: string, job: Job | undefined): TLItem {
+function buildItem(a: Assignment, group: string, content: string, job: Job | undefined, color?: string): TLItem {
   const classes = ['tl-item'];
   if (job && TENTATIVE_STATUSES.has(job.status)) classes.push('tentative');
   if (job) classes.push(`status-${job.status}`);
@@ -343,6 +348,6 @@ function buildItem(a: Assignment, group: string, content: string, job: Job | und
     end: parseISODateLocal(isoDatePlusOne(a.end_date)),
     className: classes.join(' '),
     title: `${content}${a.allocation_pct < 100 ? ` · ${a.allocation_pct}%` : ''}${a.conflict ? ' · OVER-ALLOCATED' : ''}`,
-    style: `--job-color: ${job?.color ?? '#4f7cff'}`,
+    style: `--job-color: ${color ?? job?.color ?? '#4f7cff'}`,
   };
 }
