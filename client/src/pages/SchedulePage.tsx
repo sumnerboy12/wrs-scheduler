@@ -4,8 +4,19 @@ import type { Assignment, Job, TimelinePayload } from '../types';
 import { JOB_STATUS_LABELS } from '../types';
 import TimelineView, { type TLGroup, type TLItem } from '../components/TimelineView';
 import AssignmentModal from '../components/AssignmentModal';
-import { addDays, formatShortDate, isoDatePlusOne, parseISODateLocal, presetWindow, toISODate, type ZoomPreset } from '../lib/dates';
+import {
+  addDays,
+  addMonths,
+  formatShortDate,
+  isoDatePlusOne,
+  parseISODateLocal,
+  presetWindow,
+  startOfMonth,
+  toISODate,
+  type ZoomPreset,
+} from '../lib/dates';
 import { escapeHtml } from '../lib/html';
+import { nzHolidaysInRange } from '../lib/nzHolidays';
 
 type GroupMode = 'employee' | 'job';
 
@@ -74,6 +85,8 @@ export default function SchedulePage() {
   const { groups, items } = useMemo(() => {
     if (!data) return { groups: [] as TLGroup[], items: [] as TLItem[] };
 
+    const dateBackgroundItems = buildDateBackgroundItems();
+
     if (groupMode === 'employee') {
       const groups: TLGroup[] = data.employees
         .filter((e) => e.active)
@@ -91,11 +104,11 @@ export default function SchedulePage() {
         return item;
       });
 
-      return { groups, items };
+      return { groups, items: [...dateBackgroundItems, ...items] };
     }
 
     const groups: TLGroup[] = [];
-    const items: TLItem[] = [];
+    const items: TLItem[] = [...dateBackgroundItems];
 
     let jobIndex = 0;
     for (const job of data.jobs) {
@@ -376,4 +389,43 @@ function buildItem(a: Assignment, group: string, content: string, job: Job | und
     title: `${content}${a.allocation_pct < 100 ? ` · ${a.allocation_pct}%` : ''}${a.conflict ? ' · OVER-ALLOCATED' : ''}`,
     style: `--job-color: ${color ?? job?.color ?? '#4f7cff'}`,
   };
+}
+
+// Weekend/holiday shading, as full-height vis-timeline "background" items
+// (no group — they render behind every row rather than in one). Covers a
+// fixed ~2.5 year window around today rather than the current pan/zoom
+// window, so scrolling sideways doesn't run out of shaded weekends.
+function buildDateBackgroundItems(): TLItem[] {
+  const rangeStart = addMonths(startOfMonth(new Date()), -6);
+  const rangeEnd = addMonths(startOfMonth(new Date()), 24);
+  const items: TLItem[] = [];
+
+  // Merge each Saturday+Sunday into a single 2-day span rather than one
+  // item per day.
+  for (let d = new Date(rangeStart); d < rangeEnd; d = addDays(d, d.getDay() === 6 ? 7 : 1)) {
+    if (d.getDay() !== 6) continue;
+    const start = new Date(d);
+    items.push({
+      id: `weekend-${toISODate(start)}`,
+      content: '',
+      start,
+      end: addDays(start, 2),
+      type: 'background',
+      className: 'tl-weekend',
+    });
+  }
+
+  for (const holiday of nzHolidaysInRange(rangeStart, rangeEnd)) {
+    items.push({
+      id: `holiday-${toISODate(holiday.date)}`,
+      content: '',
+      start: holiday.date,
+      end: addDays(holiday.date, 1),
+      type: 'background',
+      className: 'tl-holiday',
+      title: holiday.name,
+    });
+  }
+
+  return items;
 }

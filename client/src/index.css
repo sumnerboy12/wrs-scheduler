@@ -424,6 +424,18 @@ tbody tr:nth-child(even) {
   font-size: 12px;
 }
 
+/* Weekend/holiday shading — full-height background items, rendered
+   behind every row and every assignment bar. */
+.vis-item.vis-background.tl-weekend {
+  background-color: rgba(255, 255, 255, 0.035) !important;
+  border: none !important;
+}
+
+.vis-item.vis-background.tl-holiday {
+  background-color: rgba(229, 72, 77, 0.14) !important;
+  border: none !important;
+}
+
 .vis-item.tl-item {
   background-color: var(--job-color, var(--accent));
   border-color: var(--job-color, var(--accent));

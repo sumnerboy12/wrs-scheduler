@@ -14,7 +14,10 @@ export interface TLGroup {
 
 export interface TLItem {
   id: number | string;
-  group: string;
+  // Omit for a `type: 'background'` item (e.g. weekend/holiday shading) —
+  // those span the full height across every group rather than sitting in
+  // one row.
+  group?: string;
   content: string;
   // Real Date objects, not ISO strings — a bare "YYYY-MM-DD" string parses
   // as UTC midnight per spec, which mis-anchors every bar by the local
@@ -26,6 +29,7 @@ export interface TLItem {
   title?: string;
   style?: string;
   editable?: boolean;
+  type?: 'background';
 }
 
 // vis-timeline's default snap rounds to the nearest 12-hour boundary at
