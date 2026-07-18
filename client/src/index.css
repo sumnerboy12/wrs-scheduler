@@ -387,6 +387,29 @@ th {
   padding: 3px 8px;
 }
 
+.color-swatch-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.color-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0;
+  cursor: pointer;
+}
+
+.color-swatch:hover {
+  transform: scale(1.1);
+}
+
+.color-swatch.selected {
+  box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px white;
+}
+
 .legend {
   display: flex;
   flex-wrap: wrap;

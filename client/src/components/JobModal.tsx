@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { Job, JobStatus } from '../types';
 import { JOB_STATUS_LABELS } from '../types';
+import { SWATCH_COLORS } from '../lib/colors';
+import ColorSwatchPicker from './ColorSwatchPicker';
 
 interface Props {
   job: Job | null;
@@ -16,7 +18,7 @@ export default function JobModal({ job, onClose, onSave, onDelete }: Props) {
   const [address, setAddress] = useState(job?.address ?? '');
   const [status, setStatus] = useState<JobStatus>(job?.status ?? 'pipeline');
   const [probability, setProbability] = useState<string>(job?.probability?.toString() ?? '');
-  const [color, setColor] = useState(job?.color ?? '#2e9e5b');
+  const [color, setColor] = useState(job?.color ?? SWATCH_COLORS[5]);
   const [notes, setNotes] = useState(job?.notes ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +71,7 @@ export default function JobModal({ job, onClose, onSave, onDelete }: Props) {
           </div>
           <div className="field">
             <label>Colour</label>
-            <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
+            <ColorSwatchPicker value={color} onChange={setColor} />
           </div>
         </div>
         <div className="field">

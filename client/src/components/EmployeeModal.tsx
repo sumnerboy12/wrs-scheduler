@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { Employee } from '../types';
+import { SWATCH_COLORS } from '../lib/colors';
+import ColorSwatchPicker from './ColorSwatchPicker';
 
 interface Props {
   employee: Employee | null;
@@ -13,7 +15,7 @@ export default function EmployeeModal({ employee, onClose, onSave, onDelete }: P
   const [role, setRole] = useState(employee?.role ?? '');
   const [email, setEmail] = useState(employee?.email ?? '');
   const [phone, setPhone] = useState(employee?.phone ?? '');
-  const [color, setColor] = useState(employee?.color ?? '#4f7cff');
+  const [color, setColor] = useState(employee?.color ?? SWATCH_COLORS[10]);
   const [active, setActive] = useState(employee?.active !== 0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +53,7 @@ export default function EmployeeModal({ employee, onClose, onSave, onDelete }: P
           </div>
           <div className="field">
             <label>Colour</label>
-            <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
+            <ColorSwatchPicker value={color} onChange={setColor} />
           </div>
         </div>
         <div className="row">
