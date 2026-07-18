@@ -76,7 +76,11 @@ export default function SchedulePage() {
     if (groupMode === 'employee') {
       const groups: TLGroup[] = data.employees
         .filter((e) => e.active)
-        .map((e) => ({ id: `emp-${e.id}`, content: `${e.name}${e.role ? `<br><small style="color:var(--text-dim)">${e.role}</small>` : ''}` }));
+        .map((e, idx) => ({
+          id: `emp-${e.id}`,
+          content: `${e.name}${e.role ? `<br><small style="color:var(--text-dim)">${e.role}</small>` : ''}`,
+          className: idx % 2 === 1 ? 'tl-row-alt' : undefined,
+        }));
 
       const items: TLItem[] = visibleAssignments.map((a) => {
         const job = jobsById.get(a.job_id!);
@@ -91,18 +95,24 @@ export default function SchedulePage() {
     const groups: TLGroup[] = [];
     const items: TLItem[] = [];
 
+    let jobIndex = 0;
     for (const job of data.jobs) {
       if (!showClosed && (job.status === 'complete' || job.status === 'lost')) continue;
+      // Band the whole job — its header row and every phase row — as one
+      // unit, alternating per job, so adjacent jobs stay easy to tell apart
+      // without fighting the existing header-vs-phase shading.
+      const altClass = jobIndex % 2 === 1 ? ' tl-row-alt' : '';
+      jobIndex++;
       const jobPhases = data.phases.filter((p) => p.job_id === job.id);
       groups.push({
         id: `job-${job.id}`,
         content: `${job.name}<br><small style="color:var(--text-dim)">${JOB_STATUS_LABELS[job.status]}</small>`,
         nestedGroups: jobPhases.map((p) => `phase-${p.id}`),
-        className: 'tl-job-group',
+        className: `tl-job-group${altClass}`,
         style: `--job-color: ${job.color}`,
       });
       for (const phase of jobPhases) {
-        groups.push({ id: `phase-${phase.id}`, content: phase.name, className: 'tl-phase-group', style: `--job-color: ${job.color}` });
+        groups.push({ id: `phase-${phase.id}`, content: phase.name, className: `tl-phase-group${altClass}`, style: `--job-color: ${job.color}` });
       }
 
       // A consolidated bar on the job's own (parent) row, spanning every phase.

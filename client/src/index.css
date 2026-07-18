@@ -68,6 +68,10 @@ th {
   letter-spacing: 0.03em;
 }
 
+tbody tr:nth-child(even) {
+  background: var(--panel-alt);
+}
+
 .btn {
   background: var(--panel-alt);
   border: 1px solid var(--border);
@@ -283,8 +287,33 @@ th {
   background: var(--panel) !important;
 }
 
+/* Job header rows previously only got their panel-alt tint in the label
+   sidebar — extend it into the bars area too, so a job's row reads as one
+   continuous band rather than two different shades side by side. */
+.vis-foreground .vis-group.vis-nesting-group {
+  background: var(--panel-alt) !important;
+}
+
 .vis-foreground .vis-group {
   border-color: var(--border) !important;
+}
+
+/* Alternating row backgrounds — flat rows (Employee view). */
+.vis-labelset .vis-label.tl-row-alt,
+.vis-foreground .vis-group.tl-row-alt {
+  background: var(--panel-alt) !important;
+}
+
+/* Job view: alternate per job (header + its phases share a band), blended
+   with the existing header/phase shading rather than replacing it. */
+.vis-labelset .vis-label.vis-nesting-group.tl-row-alt,
+.vis-foreground .vis-group.vis-nesting-group.tl-row-alt {
+  background: color-mix(in srgb, var(--panel-alt) 88%, white 12%) !important;
+}
+
+.vis-labelset .vis-label.vis-nested-group.tl-row-alt,
+.vis-foreground .vis-group.vis-nested-group.tl-row-alt {
+  background: color-mix(in srgb, var(--panel) 88%, white 12%) !important;
 }
 
 .vis-panel.vis-top,
