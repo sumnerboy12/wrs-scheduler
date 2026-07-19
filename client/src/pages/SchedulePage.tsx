@@ -123,7 +123,7 @@ export default function SchedulePage() {
         .filter((e) => e.active)
         .map((e, idx) => ({
           id: `emp-${e.id}`,
-          content: `${escapeHtml(e.name)}${e.role ? `<br><small style="color:var(--text-dim)">${escapeHtml(e.role)}</small>` : ''}`,
+          content: `<strong style="font-size:14px;">${escapeHtml(e.name)}</strong>`,
           className: idx % 2 === 1 ? 'tl-row-alt' : undefined,
         }));
 
