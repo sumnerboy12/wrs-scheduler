@@ -190,7 +190,7 @@ export default function SchedulePage() {
           start: parseISODateLocal(minStart),
           end: parseISODateLocal(isoDatePlusOne(maxEnd)),
           className: classes.join(' '),
-          title: `${job.name} · ${minStart} – ${maxEnd}`,
+          title: `${job.name} · ${formatShortDate(minStart)} – ${formatShortDate(maxEnd)}`,
           style: `--job-color: ${job.color}`,
           editable: false,
         });
@@ -462,7 +462,7 @@ function buildItem(a: Assignment, group: string, content: string, job: Job | und
     start: parseISODateLocal(a.start_date),
     end: parseISODateLocal(isoDatePlusOne(a.end_date)),
     className: classes.join(' '),
-    title: `${content}${a.allocation_pct < 100 ? ` · ${a.allocation_pct}%` : ''}${a.conflict ? ' · OVER-ALLOCATED' : ''}`,
+    title: `${content} · ${formatShortDate(a.start_date)} – ${formatShortDate(a.end_date)}${a.allocation_pct < 100 ? ` · ${a.allocation_pct}%` : ''}${a.conflict ? ' · OVER-ALLOCATED' : ''}`,
     style: `--job-color: ${color ?? job?.color ?? '#4f7cff'}`,
   };
 }
