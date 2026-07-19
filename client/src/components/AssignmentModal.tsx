@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Assignment, Employee, Job, Phase } from '../types';
+import { formatShortDate } from '../lib/dates';
 
 interface Props {
   employees: Employee[];
@@ -120,7 +121,7 @@ export default function AssignmentModal({
             </option>
             {phasesForJob.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name} ({p.start_date} – {p.end_date})
+                {p.name} ({formatShortDate(p.start_date)} – {formatShortDate(p.end_date)})
               </option>
             ))}
           </select>

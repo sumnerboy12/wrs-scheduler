@@ -6,6 +6,7 @@ import JobModal from '../components/JobModal';
 import PhaseModal from '../components/PhaseModal';
 import ImportModal, { type ImportField } from '../components/ImportModal';
 import { matchJobStatus } from '../lib/jobStatus';
+import { formatShortDate } from '../lib/dates';
 
 const JOB_IMPORT_FIELDS: ImportField[] = [
   { key: 'code', label: 'Job code', aliases: ['job code', 'code', 'job #', 'job number', 'reference', 'ref'] },
@@ -176,8 +177,8 @@ export default function JobsPage() {
                     <tr key={phase.id}>
                       <td>{phase.sequence}</td>
                       <td>{phase.name}</td>
-                      <td>{phase.start_date}</td>
-                      <td>{phase.end_date}</td>
+                      <td>{formatShortDate(phase.start_date)}</td>
+                      <td>{formatShortDate(phase.end_date)}</td>
                       <td>
                         <button className="btn" onClick={() => setEditingPhase(phase)}>
                           Edit

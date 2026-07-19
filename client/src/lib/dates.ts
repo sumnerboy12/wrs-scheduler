@@ -57,12 +57,14 @@ export function parseISODateLocal(isoDate: string): Date {
   return new Date(year, month - 1, day);
 }
 
-const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const WEEKDAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-// "2026-07-19" -> "19 Jul"
+// "2026-07-20" -> "Mon 20/07"
 export function formatShortDate(isoDate: string): string {
   const d = parseISODateLocal(isoDate);
-  return `${d.getDate()} ${MONTH_ABBR[d.getMonth()]}`;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  return `${WEEKDAY_ABBR[d.getDay()]} ${day}/${month}`;
 }
 
 export type ZoomPreset = 'day' | 'week' | 'month' | 'quarter';
