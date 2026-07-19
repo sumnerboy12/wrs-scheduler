@@ -1,8 +1,0 @@
-services:
-  wrs-scheduler:
-    image: wrs-scheduler:latest
-    restart: unless-stopped
-    ports:
-      - "4000:4000"
-    volumes:
-      - /mnt/backup/config/wrs-scheduler/data:/app/server/data
