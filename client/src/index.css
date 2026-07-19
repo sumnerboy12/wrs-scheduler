@@ -496,14 +496,16 @@ tbody tr:nth-child(even) {
 
 .vis-item.tl-item.job-summary {
   background-color: color-mix(in srgb, var(--job-color, var(--accent)) 30%, var(--panel));
-  border-width: 2px;
-  border-radius: 6px;
-  font-weight: 600;
+  border-width: 3px;
+  border-radius: 7px;
+  font-weight: 700;
+  font-size: 14px;
   color: var(--text);
 }
 
 .vis-item.tl-item.job-summary .vis-item-content {
   color: var(--text);
+  padding: 4px 10px;
 }
 
 /* Individual staff bars nested under a job's phases — lighter and more
