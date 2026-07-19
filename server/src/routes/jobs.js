@@ -3,13 +3,21 @@ import db from '../db/index.js';
 
 const router = Router();
 
+// Client first, then job code — with jobs missing either sorted to the end
+// rather than SQLite's default of NULLs-first, so newly created pipeline
+// jobs (which often don't have a client/code yet) don't jump to the top.
+const JOB_ORDER = `
+  client_name IS NULL, client_name COLLATE NOCASE,
+  code IS NULL, code COLLATE NOCASE
+`;
+
 router.get('/', (req, res) => {
   const { status } = req.query;
   let rows;
   if (status) {
-    rows = db.prepare('SELECT * FROM jobs WHERE status = ? ORDER BY created_at DESC').all(status);
+    rows = db.prepare(`SELECT * FROM jobs WHERE status = ? ORDER BY ${JOB_ORDER}`).all(status);
   } else {
-    rows = db.prepare('SELECT * FROM jobs ORDER BY created_at DESC').all();
+    rows = db.prepare(`SELECT * FROM jobs ORDER BY ${JOB_ORDER}`).all();
   }
   res.json(rows);
 });

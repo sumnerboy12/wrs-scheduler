@@ -8,7 +8,16 @@ const router = Router();
 // items grouped by employee or by job, with job/phase context on each assignment.
 router.get('/', (req, res) => {
   const employees = db.prepare('SELECT * FROM employees ORDER BY name').all();
-  const jobs = db.prepare('SELECT * FROM jobs ORDER BY created_at DESC').all();
+  // Client first, then job code, with either missing sorted to the end —
+  // matches the Jobs list ordering (see routes/jobs.js) so By Job groups
+  // appear in the same order on both screens.
+  const jobs = db
+    .prepare(
+      `SELECT * FROM jobs
+       ORDER BY client_name IS NULL, client_name COLLATE NOCASE,
+                code IS NULL, code COLLATE NOCASE`
+    )
+    .all();
   const phases = db.prepare('SELECT * FROM phases ORDER BY sequence, start_date').all();
   const assignments = db
     .prepare(
