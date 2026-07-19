@@ -28,6 +28,7 @@ interface PersistedView {
   groupMode: GroupMode;
   preset: ZoomPreset;
   showClosed: boolean;
+  compact: boolean;
   start: string;
   end: string;
 }
@@ -54,6 +55,7 @@ export default function SchedulePage() {
   const [groupMode, setGroupMode] = useState<GroupMode>(() => loadPersistedView()?.groupMode ?? 'employee');
   const [preset, setPreset] = useState<ZoomPreset>(() => loadPersistedView()?.preset ?? 'month');
   const [showClosed, setShowClosed] = useState(() => loadPersistedView()?.showClosed ?? false);
+  const [compact, setCompact] = useState(() => loadPersistedView()?.compact ?? false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [window, setWindow] = useState<{ start: Date; end: Date } | null>(() => {
@@ -144,24 +146,30 @@ export default function SchedulePage() {
       // code, 14px bold name on line one; 12px dim meta line underneath.
       const jobSwatch = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${job.color};margin-right:8px;"></span>`;
       const jobCodePrefix = job.code ? `<span style="font-size:12px;color:var(--text-dim);">${escapeHtml(job.code)}</span> ` : '';
-      const jobStatusPill = `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.02em;background:${job.color};color:#fff;">${JOB_STATUS_LABELS[job.status]}</span>`;
-      const jobMetaLine = `${jobStatusPill} · ${job.client_name ? escapeHtml(job.client_name) : 'No client set'}`;
-      const jobContent = `${jobSwatch}${jobCodePrefix}<strong style="font-size:14px;">${escapeHtml(job.name)}</strong><div style="font-size:12px;color:var(--text-dim);margin-top:4px;">${jobMetaLine}</div>`;
+      const jobContent = compact
+        ? `${jobSwatch}${jobCodePrefix}<strong style="font-size:13px;">${escapeHtml(job.name)}</strong>`
+        : (() => {
+            const jobStatusPill = `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.02em;background:${job.color};color:#fff;">${JOB_STATUS_LABELS[job.status]}</span>`;
+            const jobMetaLine = `${jobStatusPill} · ${job.client_name ? escapeHtml(job.client_name) : 'No client set'}`;
+            return `${jobSwatch}${jobCodePrefix}<strong style="font-size:14px;">${escapeHtml(job.name)}</strong><div style="font-size:12px;color:var(--text-dim);margin-top:4px;">${jobMetaLine}</div>`;
+          })();
 
       groups.push({
         id: `job-${job.id}`,
         content: jobContent,
-        nestedGroups: jobPhases.map((p) => `phase-${p.id}`),
-        className: `tl-job-group${altClass}`,
+        nestedGroups: compact ? undefined : jobPhases.map((p) => `phase-${p.id}`),
+        className: `tl-job-group${altClass}${compact ? ' tl-compact' : ''}`,
         style: `--job-color: ${job.color}`,
       });
-      for (const phase of jobPhases) {
-        const phaseStaffCount = new Set(
-          visibleAssignments.filter((a) => a.phase_id === phase.id).map((a) => a.employee_id),
-        ).size;
-        const phaseMetaLine = `${formatShortDate(phase.start_date)} – ${formatShortDate(phase.end_date)}${phaseStaffCount ? ` · ${phaseStaffCount} staff` : ''}`;
-        const phaseContent = `<div class="tl-phase-title-row"><span class="tl-phase-index">${phase.sequence}</span><strong class="tl-phase-name">${escapeHtml(phase.name)}</strong></div><div class="tl-phase-meta">${phaseMetaLine}</div>`;
-        groups.push({ id: `phase-${phase.id}`, content: phaseContent, className: `tl-phase-group${altClass}`, style: `--job-color: ${job.color}` });
+      if (!compact) {
+        for (const phase of jobPhases) {
+          const phaseStaffCount = new Set(
+            visibleAssignments.filter((a) => a.phase_id === phase.id).map((a) => a.employee_id),
+          ).size;
+          const phaseMetaLine = `${formatShortDate(phase.start_date)} – ${formatShortDate(phase.end_date)}${phaseStaffCount ? ` · ${phaseStaffCount} staff` : ''}`;
+          const phaseContent = `<div class="tl-phase-title-row"><span class="tl-phase-index">${phase.sequence}</span><strong class="tl-phase-name">${escapeHtml(phase.name)}</strong></div><div class="tl-phase-meta">${phaseMetaLine}</div>`;
+          groups.push({ id: `phase-${phase.id}`, content: phaseContent, className: `tl-phase-group${altClass}`, style: `--job-color: ${job.color}` });
+        }
       }
 
       // A consolidated bar on the job's own (parent) row, spanning every phase.
@@ -173,6 +181,7 @@ export default function SchedulePage() {
         const classes = ['tl-item', 'job-summary'];
         if (TENTATIVE_STATUSES.has(job.status)) classes.push('tentative');
         classes.push(`status-${job.status}`);
+        if (compact) classes.push('tl-compact');
 
         items.push({
           id: `job-summary-${job.id}`,
@@ -188,20 +197,22 @@ export default function SchedulePage() {
       }
     }
 
-    for (const a of visibleAssignments) {
-      const employee = employeesById.get(a.employee_id);
-      const job = jobsById.get(a.job_id!);
-      // Colour by employee, not job — the job's colour already carries the
-      // phase rows and summary bar, so tinting staff bars by employee is
-      // what lets you tell who's on a phase without opening it.
-      const item = buildItem(a, `phase-${a.phase_id}`, employee ? escapeHtml(employee.name) : '', job, employee?.color);
-      item.className += ' staff-bar';
-      items.push(item);
+    if (!compact) {
+      for (const a of visibleAssignments) {
+        const employee = employeesById.get(a.employee_id);
+        const job = jobsById.get(a.job_id!);
+        // Colour by employee, not job — the job's colour already carries the
+        // phase rows and summary bar, so tinting staff bars by employee is
+        // what lets you tell who's on a phase without opening it.
+        const item = buildItem(a, `phase-${a.phase_id}`, employee ? escapeHtml(employee.name) : '', job, employee?.color);
+        item.className += ' staff-bar';
+        items.push(item);
+      }
     }
 
     return { groups, items };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, groupMode, visibleAssignments, jobsById, employeesById, showClosed, statusFilter, search]);
+  }, [data, groupMode, visibleAssignments, jobsById, employeesById, showClosed, statusFilter, search, compact]);
 
   const applyPreset = (p: ZoomPreset) => {
     setPreset(p);
@@ -215,16 +226,16 @@ export default function SchedulePage() {
 
   const handleWindowChange = (start: Date, end: Date) => {
     centerRef.current = new Date((start.getTime() + end.getTime()) / 2);
-    savePersistedView({ groupMode, preset, showClosed, start: start.toISOString(), end: end.toISOString() });
+    savePersistedView({ groupMode, preset, showClosed, compact, start: start.toISOString(), end: end.toISOString() });
   };
 
   // Persist immediately when a toggle changes, without waiting for the
   // timeline to also report a range change.
   useEffect(() => {
     if (!window) return;
-    savePersistedView({ groupMode, preset, showClosed, start: window.start.toISOString(), end: window.end.toISOString() });
+    savePersistedView({ groupMode, preset, showClosed, compact, start: window.start.toISOString(), end: window.end.toISOString() });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupMode, preset, showClosed]);
+  }, [groupMode, preset, showClosed, compact]);
 
   const handleItemDoubleClick = (itemId: number | string) => {
     if (typeof itemId === 'string') return; // job summary bar — not an editable assignment
@@ -312,6 +323,13 @@ export default function SchedulePage() {
           </button>
         </div>
 
+        {groupMode === 'job' && (
+          <label style={{ fontSize: 13, color: 'var(--text-dim)', display: 'flex', gap: 6, alignItems: 'center' }}>
+            <input type="checkbox" checked={compact} onChange={(e) => setCompact(e.target.checked)} style={{ width: 'auto' }} />
+            Compact view
+          </label>
+        )}
+
         <input
           type="text"
           placeholder="Search job name, code, client…"
@@ -370,6 +388,13 @@ export default function SchedulePage() {
 
       <div style={{ flex: 1, minHeight: 0 }}>
         <TimelineView
+          // Force a fresh vis-timeline instance on mode switches — it
+          // caches each row's measured height and, empirically, doesn't
+          // always recompute it correctly for every row when only the
+          // group content shrinks (e.g. leaving one row taller than the
+          // rest after toggling into compact view). A full remount
+          // guarantees every row gets measured from scratch.
+          key={`${groupMode}-${compact}`}
           groups={groups}
           items={items}
           window={window}

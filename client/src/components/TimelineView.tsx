@@ -84,7 +84,11 @@ export default function TimelineView({
       zoomMin: 1000 * 60 * 60 * 24, // 1 day
       zoomMax: 1000 * 60 * 60 * 24 * 400, // ~13 months
       orientation: 'top',
-      margin: { item: 6, axis: 10 },
+      // margin.axis only pads the row closest to the time axis (the top
+      // row, since orientation is 'top') — negligible at full row heights
+      // but very visible as an oversized first row once compact view
+      // makes every other row much thinner.
+      margin: { item: 6, axis: 2 },
       // Pass the restored range up front — if the widget mounts with no
       // configured range, vis-timeline auto-fits to the item data on its
       // first (deferred) redraw and can silently overwrite a range set

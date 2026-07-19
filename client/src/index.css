@@ -255,6 +255,14 @@ tbody tr:nth-child(even) {
   line-height: 1.5;
 }
 
+/* Compact view — single-line job row (code + name only, no status/client
+   subline), so it can sit much thinner than the full two-line header. */
+.vis-labelset .vis-label.tl-job-group.tl-compact .vis-inner {
+  padding-top: 3px;
+  padding-bottom: 3px;
+  line-height: 1.2;
+}
+
 .vis-labelset .vis-label.tl-phase-group {
   /* vis-timeline classifies nesting depth per-redraw and can drop the
      vis-group-level-0 class on a collapse/expand cycle, falling through
@@ -506,6 +514,18 @@ tbody tr:nth-child(even) {
 .vis-item.tl-item.job-summary .vis-item-content {
   color: var(--text);
   padding: 4px 10px;
+}
+
+/* Compact view — a touch smaller than the full view's deliberately chunky
+   job-summary bar, to match the thinner single-line row it sits in. */
+.vis-item.tl-item.job-summary.tl-compact {
+  border-width: 2px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.vis-item.tl-item.job-summary.tl-compact .vis-item-content {
+  padding: 2px 8px;
 }
 
 /* Individual staff bars nested under a job's phases — lighter and more
