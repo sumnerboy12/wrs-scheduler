@@ -33,6 +33,10 @@ CREATE TABLE IF NOT EXISTS phases (
   sequence INTEGER NOT NULL DEFAULT 0,
   start_date TEXT NOT NULL,
   end_date TEXT NOT NULL,
+  -- Rough headcount estimate for pipeline/quoted jobs, before any real
+  -- employee is assigned — lets a quote be sanity-checked against total
+  -- capacity without committing specific people to unconfirmed work.
+  estimated_staff INTEGER,
   notes TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))

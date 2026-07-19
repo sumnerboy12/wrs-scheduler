@@ -481,6 +481,16 @@ tbody tr:nth-child(even) {
   border: none !important;
 }
 
+/* Days where pipeline/quoted estimates plus real assignments would need
+   more people than total active headcount. Amber rather than the
+   holiday's red — a capacity risk to plan around, not a fixed fact about
+   the calendar — and painted after weekend/holiday in the items array so
+   it wins on days where more than one kind of shading applies. */
+.vis-item.vis-background.tl-overcapacity {
+  background-color: rgba(250, 176, 5, 0.22) !important;
+  border: none !important;
+}
+
 .vis-item.tl-item {
   background-color: var(--job-color, var(--accent));
   border-color: var(--job-color, var(--accent));
@@ -540,6 +550,22 @@ tbody tr:nth-child(even) {
 
 .vis-item.tl-item.staff-bar .vis-item-content {
   color: var(--text);
+}
+
+/* Pipeline/quoted phase headcount estimate — no real employee is assigned
+   yet, so it's a dashed, unfilled placeholder rather than a solid bar,
+   to avoid reading as an actual commitment. */
+.vis-item.tl-item.estimate-bar {
+  background-color: transparent;
+  border-width: 1px;
+  border-style: dashed;
+  border-color: var(--job-color, var(--accent));
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+
+.vis-item.tl-item.estimate-bar .vis-item-content {
+  color: var(--text-dim);
 }
 
 .vis-item.tl-item.conflict {

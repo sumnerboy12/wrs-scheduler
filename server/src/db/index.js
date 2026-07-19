@@ -22,5 +22,10 @@ if (!jobColumns.includes('code')) {
   db.exec('ALTER TABLE jobs ADD COLUMN code TEXT');
 }
 
+const phaseColumns = db.prepare('PRAGMA table_info(phases)').all().map((c) => c.name);
+if (!phaseColumns.includes('estimated_staff')) {
+  db.exec('ALTER TABLE phases ADD COLUMN estimated_staff INTEGER');
+}
+
 export { dataDir };
 export default db;

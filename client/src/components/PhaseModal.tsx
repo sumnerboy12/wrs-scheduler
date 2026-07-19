@@ -14,6 +14,7 @@ export default function PhaseModal({ phase, defaultSequence, onClose, onSave, on
   const [sequence, setSequence] = useState(phase?.sequence ?? defaultSequence);
   const [startDate, setStartDate] = useState(phase?.start_date ?? '');
   const [endDate, setEndDate] = useState(phase?.end_date ?? '');
+  const [estimatedStaff, setEstimatedStaff] = useState(phase?.estimated_staff != null ? String(phase.estimated_staff) : '');
   const [notes, setNotes] = useState(phase?.notes ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +27,14 @@ export default function PhaseModal({ phase, defaultSequence, onClose, onSave, on
     setSaving(true);
     setError(null);
     try {
-      await onSave({ name, sequence, start_date: startDate, end_date: endDate, notes });
+      await onSave({
+        name,
+        sequence,
+        start_date: startDate,
+        end_date: endDate,
+        estimated_staff: estimatedStaff.trim() ? Number(estimatedStaff) : null,
+        notes,
+      });
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save');
@@ -54,9 +62,21 @@ export default function PhaseModal({ phase, defaultSequence, onClose, onSave, on
             <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
           </div>
         </div>
-        <div className="field">
-          <label>Order (sequence)</label>
-          <input type="number" value={sequence} onChange={(e) => setSequence(Number(e.target.value))} />
+        <div className="row">
+          <div className="field">
+            <label>Order (sequence)</label>
+            <input type="number" value={sequence} onChange={(e) => setSequence(Number(e.target.value))} />
+          </div>
+          <div className="field">
+            <label>Estimated staff (optional)</label>
+            <input
+              type="number"
+              min={0}
+              placeholder="e.g. 3"
+              value={estimatedStaff}
+              onChange={(e) => setEstimatedStaff(e.target.value)}
+            />
+          </div>
         </div>
         <div className="field">
           <label>Notes</label>

@@ -107,10 +107,16 @@ export default function SchedulePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, jobsById, showClosed, statusFilter, search]);
 
+  // Capacity overflow depends only on the raw data (every job/phase/
+  // assignment, not whatever the user currently has searched/filtered
+  // to) — a filtered-out job's demand on real headcount doesn't go away
+  // just because it's hidden from view right now.
+  const capacityOverflowItems = useMemo(() => (data ? buildCapacityOverflowItems(data) : []), [data]);
+
   const { groups, items } = useMemo(() => {
     if (!data) return { groups: [] as TLGroup[], items: [] as TLItem[] };
 
-    const dateBackgroundItems = buildDateBackgroundItems();
+    const dateBackgroundItems = [...buildDateBackgroundItems(), ...capacityOverflowItems];
 
     if (groupMode === 'employee') {
       const groups: TLGroup[] = data.employees
@@ -145,6 +151,12 @@ export default function SchedulePage() {
       jobIndex++;
       const jobPhases = data.phases.filter((p) => p.job_id === job.id);
       const jobStaffCount = new Set(visibleAssignments.filter((a) => a.job_id === job.id).map((a) => a.employee_id)).size;
+      // Pipeline/quoted jobs typically have no real assignments yet — the
+      // estimate is what carries the "how many people would this need"
+      // signal until someone's actually booked onto it.
+      const jobEstimatedStaff = TENTATIVE_STATUSES.has(job.status)
+        ? jobPhases.reduce((sum, p) => sum + (p.estimated_staff ?? 0), 0)
+        : 0;
 
       // Match the Jobs page's own list styling exactly: 10px dot, 12px dim
       // code, 14px bold name on line one; 12px dim meta line underneath.
@@ -173,6 +185,23 @@ export default function SchedulePage() {
           const phaseMetaLine = `${formatShortDate(phase.start_date)} – ${formatShortDate(phase.end_date)}${phaseStaffCount ? ` · ${phaseStaffCount} staff` : ''}`;
           const phaseContent = `<div class="tl-phase-title-row"><span class="tl-phase-index">${phase.sequence}</span><strong class="tl-phase-name">${escapeHtml(phase.name)}</strong></div><div class="tl-phase-meta">${phaseMetaLine}</div>`;
           groups.push({ id: `phase-${phase.id}`, content: phaseContent, className: `tl-phase-group${altClass}`, style: `--job-color: ${job.color}` });
+
+          // Pipeline/quoted phases aren't assigned to real employees yet —
+          // show the estimate as its own placeholder bar rather than
+          // leaving the row empty.
+          if (TENTATIVE_STATUSES.has(job.status) && phase.estimated_staff) {
+            items.push({
+              id: `phase-estimate-${phase.id}`,
+              group: `phase-${phase.id}`,
+              content: `~${phase.estimated_staff} staff (est.)`,
+              start: parseISODateLocal(phase.start_date),
+              end: parseISODateLocal(isoDatePlusOne(phase.end_date)),
+              className: 'tl-item estimate-bar',
+              title: `${phase.name} · ~${phase.estimated_staff} staff estimated · ${formatShortDate(phase.start_date)} – ${formatShortDate(phase.end_date)}`,
+              style: `--job-color: ${job.color}`,
+              editable: false,
+            });
+          }
         }
       }
 
@@ -190,7 +219,7 @@ export default function SchedulePage() {
         items.push({
           id: `job-summary-${job.id}`,
           group: `job-${job.id}`,
-          content: `${jobPhases.length} phase${jobPhases.length === 1 ? '' : 's'}${jobStaffCount ? ` · ${jobStaffCount} staff` : ''}`,
+          content: `${jobPhases.length} phase${jobPhases.length === 1 ? '' : 's'}${jobStaffCount ? ` · ${jobStaffCount} staff` : ''}${jobEstimatedStaff ? ` · ~${jobEstimatedStaff} staff (est.)` : ''}`,
           start: parseISODateLocal(minStart),
           end: parseISODateLocal(isoDatePlusOne(maxEnd)),
           className: classes.join(' '),
@@ -216,7 +245,7 @@ export default function SchedulePage() {
 
     return { groups, items };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, groupMode, visibleAssignments, jobsById, employeesById, showClosed, statusFilter, search, compact]);
+  }, [data, groupMode, visibleAssignments, jobsById, employeesById, showClosed, statusFilter, search, compact, capacityOverflowItems]);
 
   const applyPreset = (p: ZoomPreset) => {
     setPreset(p);
@@ -412,6 +441,10 @@ export default function SchedulePage() {
           <span className="legend-swatch" style={{ background: 'transparent', boxShadow: '0 0 0 2px var(--danger)' }} />
           Over-allocated
         </span>
+        <span>
+          <span className="legend-swatch" style={{ background: 'rgba(250, 176, 5, 0.6)' }} />
+          Estimated demand exceeds headcount
+        </span>
         <span style={{ marginLeft: 'auto' }}>Double-click an empty slot to add · double-click a bar to edit · drag to reschedule</span>
       </div>
 
@@ -522,13 +555,19 @@ function buildItem(a: Assignment, group: string, content: string, job: Job | und
   };
 }
 
+// Covers a fixed ~2.5 year window around today rather than the current
+// pan/zoom window, so scrolling sideways doesn't run out of shading.
+function getScheduleBackgroundRange(): { rangeStart: Date; rangeEnd: Date } {
+  return {
+    rangeStart: addMonths(startOfMonth(new Date()), -6),
+    rangeEnd: addMonths(startOfMonth(new Date()), 24),
+  };
+}
+
 // Weekend/holiday shading, as full-height vis-timeline "background" items
-// (no group — they render behind every row rather than in one). Covers a
-// fixed ~2.5 year window around today rather than the current pan/zoom
-// window, so scrolling sideways doesn't run out of shaded weekends.
+// (no group — they render behind every row rather than in one).
 function buildDateBackgroundItems(): TLItem[] {
-  const rangeStart = addMonths(startOfMonth(new Date()), -6);
-  const rangeEnd = addMonths(startOfMonth(new Date()), 24);
+  const { rangeStart, rangeEnd } = getScheduleBackgroundRange();
   const items: TLItem[] = [];
 
   // Merge each Saturday+Sunday into a single 2-day span rather than one
@@ -556,6 +595,61 @@ function buildDateBackgroundItems(): TLItem[] {
       className: 'tl-holiday',
       title: holiday.name,
     });
+  }
+
+  return items;
+}
+
+// Flags any day where demand for staff — real assignments (each employee
+// counted once, regardless of allocation%) plus pipeline/quoted phase
+// estimates (headcount not yet tied to anyone) — exceeds total active
+// headcount. Answers "could we actually staff this if every quote in the
+// pipeline went ahead," not just "is any one person over-booked."
+function buildCapacityOverflowItems(data: TimelinePayload): TLItem[] {
+  const totalEmployees = data.employees.filter((e) => e.active).length;
+  if (totalEmployees === 0) return [];
+
+  const { rangeStart, rangeEnd } = getScheduleBackgroundRange();
+
+  const estimatedPhases = data.phases
+    .filter((p) => p.estimated_staff)
+    .map((p) => ({ phase: p, job: data.jobs.find((j) => j.id === p.job_id) }))
+    .filter((x): x is { phase: Phase; job: Job } => !!x.job && TENTATIVE_STATUSES.has(x.job.status));
+
+  const overflowDays: string[] = [];
+  for (let d = new Date(rangeStart); d < rangeEnd; d = addDays(d, 1)) {
+    const iso = toISODate(d);
+    const realCount = new Set(
+      data.assignments.filter((a) => a.start_date <= iso && a.end_date >= iso).map((a) => a.employee_id),
+    ).size;
+    const estimatedCount = estimatedPhases
+      .filter(({ phase }) => phase.start_date <= iso && phase.end_date >= iso)
+      .reduce((sum, { phase }) => sum + (phase.estimated_staff ?? 0), 0);
+    if (realCount + estimatedCount > totalEmployees) overflowDays.push(iso);
+  }
+
+  // Merge consecutive overflow days into single spans rather than one
+  // item per day.
+  const items: TLItem[] = [];
+  let i = 0;
+  while (i < overflowDays.length) {
+    let j = i;
+    while (
+      j + 1 < overflowDays.length &&
+      toISODate(addDays(parseISODateLocal(overflowDays[j]), 1)) === overflowDays[j + 1]
+    ) {
+      j++;
+    }
+    items.push({
+      id: `overcapacity-${overflowDays[i]}`,
+      content: '',
+      start: parseISODateLocal(overflowDays[i]),
+      end: addDays(parseISODateLocal(overflowDays[j]), 1),
+      type: 'background',
+      className: 'tl-overcapacity',
+      title: 'Estimated + assigned staff exceed total headcount on this date',
+    });
+    i = j + 1;
   }
 
   return items;

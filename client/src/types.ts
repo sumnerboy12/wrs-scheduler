@@ -41,6 +41,7 @@ export interface Phase {
   sequence: number;
   start_date: string;
   end_date: string;
+  estimated_staff: number | null;
   notes: string | null;
 }
 

@@ -91,16 +91,16 @@ router.post('/:jobId/phases', (req, res) => {
   const job = db.prepare('SELECT id FROM jobs WHERE id = ?').get(jobId);
   if (!job) return res.status(404).json({ error: 'job not found' });
 
-  const { name, sequence, start_date, end_date, notes } = req.body;
+  const { name, sequence, start_date, end_date, estimated_staff, notes } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'name is required' });
   if (!start_date || !end_date) return res.status(400).json({ error: 'start_date and end_date are required' });
 
   const result = db
     .prepare(
-      `INSERT INTO phases (job_id, name, sequence, start_date, end_date, notes)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO phases (job_id, name, sequence, start_date, end_date, estimated_staff, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(jobId, name.trim(), sequence ?? 0, start_date, end_date, notes || null);
+    .run(jobId, name.trim(), sequence ?? 0, start_date, end_date, estimated_staff ?? null, notes || null);
 
   const row = db.prepare('SELECT * FROM phases WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(row);
