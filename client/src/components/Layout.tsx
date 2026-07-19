@@ -32,7 +32,10 @@ export default function Layout() {
           background: 'var(--panel)',
         }}
       >
-        <strong style={{ fontSize: 16 }}>Rostr</strong>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <img src="/favicon.svg" alt="" width={22} height={22} style={{ borderRadius: 5 }} />
+          <strong style={{ fontSize: 16 }}>Rostr</strong>
+        </div>
         <nav style={{ display: 'flex', gap: 4, marginLeft: 20 }}>
           <NavLink to="/" end style={navStyle}>
             Schedule
