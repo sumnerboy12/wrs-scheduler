@@ -64,7 +64,7 @@ export default function SchedulePage() {
     return presetWindow('month', new Date());
   });
   const [editing, setEditing] = useState<Assignment | null>(null);
-  const [creating, setCreating] = useState<{ employeeId?: number; date?: string } | null>(null);
+  const [creating, setCreating] = useState<{ employeeId?: number; jobId?: number; phaseId?: number; date?: string } | null>(null);
 
   const centerRef = useRef(window ? new Date((window.start.getTime() + window.end.getTime()) / 2) : new Date());
 
@@ -247,6 +247,12 @@ export default function SchedulePage() {
     const date = toISODate(time);
     if (groupId.startsWith('emp-')) {
       setCreating({ employeeId: Number(groupId.replace('emp-', '')), date });
+    } else if (groupId.startsWith('phase-')) {
+      const phaseId = Number(groupId.replace('phase-', ''));
+      const phase = data?.phases.find((p) => p.id === phaseId);
+      setCreating({ jobId: phase?.job_id, phaseId, date });
+    } else if (groupId.startsWith('job-')) {
+      setCreating({ jobId: Number(groupId.replace('job-', '')), date });
     } else {
       setCreating({ date });
     }
@@ -429,6 +435,8 @@ export default function SchedulePage() {
           phases={data.phases}
           assignment={null}
           defaultEmployeeId={creating.employeeId}
+          defaultJobId={creating.jobId}
+          defaultPhaseId={creating.phaseId}
           defaultDate={creating.date}
           onClose={() => setCreating(null)}
           onSave={async (patch) => {

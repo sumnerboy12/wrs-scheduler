@@ -7,6 +7,8 @@ interface Props {
   phases: Phase[];
   assignment: Assignment | null;
   defaultEmployeeId?: number;
+  defaultJobId?: number;
+  defaultPhaseId?: number;
   defaultDate?: string;
   onClose: () => void;
   onSave: (data: Partial<Assignment>) => Promise<void>;
@@ -19,6 +21,8 @@ export default function AssignmentModal({
   phases,
   assignment,
   defaultEmployeeId,
+  defaultJobId,
+  defaultPhaseId,
   defaultDate,
   onClose,
   onSave,
@@ -27,8 +31,8 @@ export default function AssignmentModal({
   const editingPhase = assignment ? phases.find((p) => p.id === assignment.phase_id) : null;
 
   const [employeeId, setEmployeeId] = useState<number | ''>(assignment?.employee_id ?? defaultEmployeeId ?? '');
-  const [jobId, setJobId] = useState<number | ''>(editingPhase?.job_id ?? '');
-  const [phaseId, setPhaseId] = useState<number | ''>(assignment?.phase_id ?? '');
+  const [jobId, setJobId] = useState<number | ''>(editingPhase?.job_id ?? defaultJobId ?? '');
+  const [phaseId, setPhaseId] = useState<number | ''>(assignment?.phase_id ?? defaultPhaseId ?? '');
   const [startDate, setStartDate] = useState(assignment?.start_date ?? defaultDate ?? '');
   const [endDate, setEndDate] = useState(assignment?.end_date ?? defaultDate ?? '');
   const [allocationPct, setAllocationPct] = useState(assignment?.allocation_pct ?? 100);
