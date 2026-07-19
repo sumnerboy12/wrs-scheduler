@@ -24,7 +24,7 @@ export default function LoginPage() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
       <div className="card" style={{ width: 320, padding: 24 }}>
-        <h1 style={{ fontSize: 18, marginTop: 0, marginBottom: 20 }}>Wayman Roofing &mdash; Scheduler</h1>
+        <h1 style={{ fontSize: 18, marginTop: 0, marginBottom: 20 }}>Rostr</h1>
         <div className="field">
           <label>Username</label>
           <input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />

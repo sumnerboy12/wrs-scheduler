@@ -1,4 +1,4 @@
-# Wayman Roofing — Scheduler
+# Rostr
 
 A resourcing/Gantt tool for assigning staff to jobs and phases, with a
 month/quarter overview and day/week drill-down.
@@ -27,7 +27,7 @@ The first time you run this, Windows Firewall may need an inbound rule to let
 other computers reach port 4000. As an administrator:
 
 ```
-netsh advfirewall firewall add rule name="Wayman Scheduler" dir=in action=allow protocol=TCP localport=4000
+netsh advfirewall firewall add rule name="Rostr" dir=in action=allow protocol=TCP localport=4000
 ```
 
 ### Data (Windows install)
@@ -89,35 +89,35 @@ YAML**. That importer deploys an existing image — it doesn't build one — so
 the image has to be built once first.
 
 1. Copy this project folder onto the NAS anywhere temporary (it's only
-   needed for the build), e.g. `/mnt/backup/apps-src/wrs-scheduler`.
+   needed for the build), e.g. `/mnt/backup/apps-src/rostr`.
 2. SSH into TrueNAS, `cd` into that folder, and build the image:
 
    ```
-   docker build -t wrs-scheduler:latest .
+   docker build -t rostr:latest .
    ```
 3. Create the persistent data folder (must exist before you install the app):
 
    ```
-   mkdir -p /mnt/backup/config/wrs-scheduler/data
+   mkdir -p /mnt/backup/config/rostr/data
    ```
 4. In the TrueNAS web UI: **Apps → Discover Apps → Custom App → Install via
-   YAML**. Give it a name (e.g. `wrs-scheduler`) and paste the contents of
+   YAML**. Give it a name (e.g. `rostr`) and paste the contents of
    **`truenas-app.yaml`** from this project, then Install.
 5. Open `http://<nas-ip>:4000`.
 
 `truenas-app.yaml` already points its volume at
-`/mnt/backup/config/wrs-scheduler/data` — if you used a different path in
+`/mnt/backup/config/rostr/data` — if you used a different path in
 step 3, edit the `volumes:` line to match before pasting it in. If port 4000
 is taken on your NAS, change the `ports:` line the same way (e.g.
 `"8080:4000"`).
 
 **Updating after a code change:** rebuild the image with the same command
-from step 2 (`docker build -t wrs-scheduler:latest .`), then **stop and
+from step 2 (`docker build -t rostr:latest .`), then **stop and
 start** the app again from the Apps UI so it picks up the new image. Don't
 use the Apps UI's "Update" button for this — it tries to pull the image
-from a registry, and `wrs-scheduler:latest` only exists locally, so that
+from a registry, and `rostr:latest` only exists locally, so that
 would fail. A stop/start just reuses whatever image is tagged
-`wrs-scheduler:latest` locally. The `data/` folder is untouched either way.
+`rostr:latest` locally. The `data/` folder is untouched either way.
 
 ## Logging in
 

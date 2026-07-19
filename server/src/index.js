@@ -33,7 +33,7 @@ app.use(express.json());
 app.use(
   session({
     secret: sessionSecret,
-    name: 'wrs.sid',
+    name: 'rostr.sid',
     resave: false,
     saveUninitialized: false,
     cookie: { httpOnly: true, sameSite: 'lax', maxAge: 30 * 24 * 60 * 60 * 1000 },
@@ -68,5 +68,5 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`WRS Scheduler server listening on http://0.0.0.0:${PORT}`);
+  console.log(`Rostr server listening on http://0.0.0.0:${PORT}`);
 });

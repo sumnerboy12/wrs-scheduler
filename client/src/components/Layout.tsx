@@ -29,7 +29,7 @@ export default function Layout() {
           background: 'var(--panel)',
         }}
       >
-        <strong style={{ fontSize: 16 }}>Wayman Roofing &mdash; Scheduler</strong>
+        <strong style={{ fontSize: 16 }}>Rostr</strong>
         <nav style={{ display: 'flex', gap: 4, marginLeft: 20 }}>
           <NavLink to="/" end style={navStyle}>
             Schedule

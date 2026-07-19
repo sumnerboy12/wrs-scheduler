@@ -24,7 +24,7 @@ type GroupMode = 'employee' | 'job';
 
 const TENTATIVE_STATUSES = new Set(['pipeline', 'quoted']);
 
-const VIEW_STORAGE_KEY = 'wrs-schedule-view';
+const VIEW_STORAGE_KEY = 'rostr-schedule-view';
 
 interface PersistedView {
   groupMode: GroupMode;
