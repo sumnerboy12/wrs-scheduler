@@ -19,9 +19,14 @@ if (employeeCount === 0) {
     (e) => insertEmployee.run(...e).lastInsertRowid
   );
 
+  const insertClient = db.prepare(`INSERT INTO clients (name, color) VALUES (?, ?)`);
+  const client1 = insertClient.run('John Smith', '#2e9e5b').lastInsertRowid;
+  const client2 = insertClient.run('Harbourview Body Corp', '#2e6f9e').lastInsertRowid;
+  const client3 = insertClient.run('Coastal Homes Ltd', '#9e8a2e').lastInsertRowid;
+
   const insertJob = db.prepare(
-    `INSERT INTO jobs (code, name, client_name, address, status, probability, color, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO jobs (code, name, client_id, address, status, probability, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
 
   const today = new Date();
@@ -35,33 +40,30 @@ if (employeeCount === 0) {
   const job1 = insertJob.run(
     'J-1001',
     'Smith Residence Reroof',
-    'John Smith',
+    client1,
     '12 Totara St, Tauranga',
     'confirmed',
     null,
-    '#2e9e5b',
     'Full tile-to-metal reroof.'
   ).lastInsertRowid;
 
   const job2 = insertJob.run(
     'J-1002',
     'Harbourview Apartments',
-    'Harbourview Body Corp',
+    client2,
     '4 Marina Dr, Mount Maunganui',
     'in_progress',
     null,
-    '#2e6f9e',
     'Large commercial membrane roof, staged by block.'
   ).lastInsertRowid;
 
   const job3 = insertJob.run(
     'J-1003',
     'Papamoa New Build',
-    'Coastal Homes Ltd',
+    client3,
     '88 Papamoa Beach Rd, Papamoa',
     'pipeline',
     40,
-    '#9e8a2e',
     'Quote sent, awaiting decision from builder.'
   ).lastInsertRowid;
 

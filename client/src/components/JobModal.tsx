@@ -1,24 +1,22 @@
 import { useState } from 'react';
-import type { Job, JobStatus } from '../types';
+import type { Client, Job, JobStatus } from '../types';
 import { JOB_STATUS_LABELS } from '../types';
-import { SWATCH_COLORS } from '../lib/colors';
-import ColorSwatchPicker from './ColorSwatchPicker';
 
 interface Props {
   job: Job | null;
+  clients: Client[];
   onClose: () => void;
   onSave: (data: Partial<Job>) => Promise<void>;
   onDelete?: (id: number) => Promise<void>;
 }
 
-export default function JobModal({ job, onClose, onSave, onDelete }: Props) {
+export default function JobModal({ job, clients, onClose, onSave, onDelete }: Props) {
   const [code, setCode] = useState(job?.code ?? '');
   const [name, setName] = useState(job?.name ?? '');
-  const [clientName, setClientName] = useState(job?.client_name ?? '');
+  const [clientId, setClientId] = useState<number | ''>(job?.client_id ?? '');
   const [address, setAddress] = useState(job?.address ?? '');
   const [status, setStatus] = useState<JobStatus>(job?.status ?? 'pipeline');
   const [probability, setProbability] = useState<string>(job?.probability?.toString() ?? '');
-  const [color, setColor] = useState(job?.color ?? SWATCH_COLORS[5]);
   const [notes, setNotes] = useState(job?.notes ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,11 +32,10 @@ export default function JobModal({ job, onClose, onSave, onDelete }: Props) {
       await onSave({
         code,
         name,
-        client_name: clientName,
+        client_id: clientId === '' ? null : Number(clientId),
         address,
         status,
         probability: probability ? Number(probability) : null,
-        color,
         notes,
       });
       onClose();
@@ -64,15 +61,21 @@ export default function JobModal({ job, onClose, onSave, onDelete }: Props) {
             <input value={name} onChange={(e) => setName(e.target.value)} autoFocus placeholder="e.g. Smith Residence Reroof" />
           </div>
         </div>
-        <div className="row">
-          <div className="field">
-            <label>Client</label>
-            <input value={clientName ?? ''} onChange={(e) => setClientName(e.target.value)} />
-          </div>
-          <div className="field">
-            <label>Colour</label>
-            <ColorSwatchPicker value={color} onChange={setColor} />
-          </div>
+        <div className="field">
+          <label>Client</label>
+          <select value={clientId} onChange={(e) => setClientId(e.target.value ? Number(e.target.value) : '')}>
+            <option value="">— No client —</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          {clients.length === 0 && (
+            <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+              No clients yet — add one from the Clients page first.
+            </div>
+          )}
         </div>
         <div className="field">
           <label>Address</label>

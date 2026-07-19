@@ -11,16 +11,24 @@ CREATE TABLE IF NOT EXISTS employees (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS clients (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  color TEXT NOT NULL DEFAULT '#3b82f6',
+  notes TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS jobs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   code TEXT,
   name TEXT NOT NULL,
-  client_name TEXT,
+  client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL,
   address TEXT,
   status TEXT NOT NULL DEFAULT 'pipeline'
     CHECK (status IN ('pipeline','quoted','confirmed','in_progress','on_hold','complete','lost')),
   probability INTEGER,
-  color TEXT NOT NULL DEFAULT '#2e9e5b',
   notes TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))

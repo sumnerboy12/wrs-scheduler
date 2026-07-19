@@ -1,4 +1,4 @@
-import type { Assignment, AuthUser, Employee, Job, JobWithPhases, ManagedUser, Phase, TimelinePayload } from '../types';
+import type { Assignment, AuthUser, Client, Employee, Job, JobWithPhases, ManagedUser, Phase, TimelinePayload } from '../types';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -33,6 +33,12 @@ export const api = {
   resetUserPassword: (id: number, password: string) =>
     request<void>(`/users/${id}/reset-password`, { method: 'POST', body: JSON.stringify({ password }) }),
   deleteUser: (id: number) => request<void>(`/users/${id}`, { method: 'DELETE' }),
+
+  getClients: () => request<Client[]>('/clients'),
+  createClient: (data: Partial<Client>) => request<Client>('/clients', { method: 'POST', body: JSON.stringify(data) }),
+  updateClient: (id: number, data: Partial<Client>) =>
+    request<Client>(`/clients/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteClient: (id: number) => request<void>(`/clients/${id}`, { method: 'DELETE' }),
 
   getEmployees: () => request<Employee[]>('/employees'),
   createEmployee: (data: Partial<Employee>) =>

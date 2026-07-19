@@ -1,17 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
-import type { Job, JobWithPhases, Phase } from '../types';
+import type { Client, Job, JobWithPhases, Phase } from '../types';
 import { JOB_STATUS_LABELS } from '../types';
 import JobModal from '../components/JobModal';
 import PhaseModal from '../components/PhaseModal';
 import ImportModal, { type ImportField } from '../components/ImportModal';
 import { matchJobStatus } from '../lib/jobStatus';
 import { formatShortDate } from '../lib/dates';
+import { NO_CLIENT_COLOR } from '../lib/colors';
 
 const JOB_IMPORT_FIELDS: ImportField[] = [
   { key: 'code', label: 'Job code', aliases: ['job code', 'code', 'job #', 'job number', 'reference', 'ref'] },
   { key: 'name', label: 'Job name', required: true, aliases: ['name', 'job', 'job name', 'project', 'project name', 'title'] },
-  { key: 'client_name', label: 'Client', aliases: ['client', 'client name', 'customer', 'customer name'] },
+  { key: 'client', label: 'Client', aliases: ['client', 'client name', 'customer', 'customer name'] },
   { key: 'address', label: 'Address', aliases: ['address', 'site address', 'location'] },
   { key: 'status', label: 'Status', aliases: ['status', 'stage'] },
   { key: 'probability', label: 'Win %', aliases: ['probability', 'win probability', 'win %', 'chance', '%'] },
@@ -20,6 +21,7 @@ const JOB_IMPORT_FIELDS: ImportField[] = [
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detail, setDetail] = useState<JobWithPhases | null>(null);
   const [showAddJob, setShowAddJob] = useState(false);
@@ -31,10 +33,35 @@ export default function JobsPage() {
   const [search, setSearch] = useState('');
 
   const loadJobs = () => api.getJobs().then(setJobs);
+  const loadClients = () => api.getClients().then(setClients);
   const loadDetail = (id: number) => api.getJob(id).then(setDetail);
+
+  const clientsById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
+  const clientFor = (job: Job) => (job.client_id != null ? clientsById.get(job.client_id) : undefined);
+
+  // Name -> id cache for the duration of one import run. A ref rather than
+  // state because rows import sequentially awaiting each other — reading
+  // `clients` state directly wouldn't see a client created two rows ago in
+  // the same batch, since it only refreshes from the server once the whole
+  // import finishes (see onDone below).
+  const importClientCache = useRef<Map<string, number> | null>(null);
+  const resolveClientId = async (rawName: string | undefined): Promise<number | null> => {
+    const name = rawName?.trim();
+    if (!name) return null;
+    if (!importClientCache.current) {
+      importClientCache.current = new Map(clients.map((c) => [c.name.trim().toLowerCase(), c.id]));
+    }
+    const key = name.toLowerCase();
+    const cached = importClientCache.current.get(key);
+    if (cached != null) return cached;
+    const created = await api.createClient({ name });
+    importClientCache.current.set(key, created.id);
+    return created.id;
+  };
 
   useEffect(() => {
     loadJobs();
+    loadClients();
   }, []);
 
   useEffect(() => {
@@ -50,7 +77,7 @@ export default function JobsPage() {
     if (statusFilter !== 'all' && j.status !== statusFilter) return false;
     if (search.trim()) {
       const q = search.trim().toLowerCase();
-      const haystack = `${j.name} ${j.code ?? ''} ${j.client_name ?? ''}`.toLowerCase();
+      const haystack = `${j.name} ${j.code ?? ''} ${clientFor(j)?.name ?? ''}`.toLowerCase();
       if (!haystack.includes(q)) return false;
     }
     return true;
@@ -75,7 +102,13 @@ export default function JobsPage() {
               </option>
             ))}
           </select>
-          <button className="btn" onClick={() => setShowImportJobs(true)}>
+          <button
+            className="btn"
+            onClick={() => {
+              importClientCache.current = null;
+              setShowImportJobs(true);
+            }}
+          >
             Import
           </button>
           <button className="btn btn-primary" onClick={() => setShowAddJob(true)}>
@@ -84,44 +117,48 @@ export default function JobsPage() {
           </div>
         </div>
         <div style={{ overflowY: 'auto', flex: 1 }}>
-          {visibleJobs.map((job) => (
-            <div
-              key={job.id}
-              onClick={() => setSelectedId(job.id)}
-              style={{
-                padding: '10px 14px',
-                cursor: 'pointer',
-                background: job.id === selectedId ? 'var(--panel-alt)' : 'transparent',
-                borderBottom: '1px solid var(--border)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: job.color, flexShrink: 0 }} />
-                {job.code && <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{job.code}</span>}
-                <strong style={{ fontSize: 14 }}>{job.name}</strong>
+          {visibleJobs.map((job) => {
+            const client = clientFor(job);
+            const jobColor = client?.color ?? NO_CLIENT_COLOR;
+            return (
+              <div
+                key={job.id}
+                onClick={() => setSelectedId(job.id)}
+                style={{
+                  padding: '10px 14px',
+                  cursor: 'pointer',
+                  background: job.id === selectedId ? 'var(--panel-alt)' : 'transparent',
+                  borderBottom: '1px solid var(--border)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: jobColor, flexShrink: 0 }} />
+                  {job.code && <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{job.code}</span>}
+                  <strong style={{ fontSize: 14 }}>{job.name}</strong>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      padding: '1px 7px',
+                      borderRadius: 999,
+                      fontSize: 10,
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.02em',
+                      background: jobColor,
+                      color: '#fff',
+                    }}
+                  >
+                    {JOB_STATUS_LABELS[job.status]}
+                  </span>
+                  <span>&middot;</span>
+                  <span>{client?.name ?? 'No client set'}</span>
+                  {job.status === 'pipeline' && job.probability != null && <span>{job.probability}%</span>}
+                </div>
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <span
-                  style={{
-                    display: 'inline-block',
-                    padding: '1px 7px',
-                    borderRadius: 999,
-                    fontSize: 10,
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.02em',
-                    background: job.color,
-                    color: '#fff',
-                  }}
-                >
-                  {JOB_STATUS_LABELS[job.status]}
-                </span>
-                <span>&middot;</span>
-                <span>{job.client_name || 'No client set'}</span>
-                {job.status === 'pipeline' && job.probability != null && <span>{job.probability}%</span>}
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {visibleJobs.length === 0 && (
             <div style={{ padding: 20, color: 'var(--text-dim)', textAlign: 'center' }}>No jobs match this filter.</div>
           )}
@@ -137,10 +174,12 @@ export default function JobsPage() {
                   {detail.code && <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>{detail.code} &middot; </span>}
                   {detail.name}
                 </h1>
-                <div style={{ color: 'var(--text-dim)', marginTop: 4 }}>{detail.client_name} &middot; {detail.address}</div>
+                <div style={{ color: 'var(--text-dim)', marginTop: 4 }}>
+                  {clientFor(detail)?.name ?? 'No client set'} &middot; {detail.address}
+                </div>
                 <span
                   className="badge"
-                  style={{ background: detail.color, marginTop: 8, display: 'inline-block' }}
+                  style={{ background: clientFor(detail)?.color ?? NO_CLIENT_COLOR, marginTop: 8, display: 'inline-block' }}
                 >
                   {JOB_STATUS_LABELS[detail.status]}
                 </span>
@@ -205,6 +244,7 @@ export default function JobsPage() {
       {showAddJob && (
         <JobModal
           job={null}
+          clients={clients}
           onClose={() => setShowAddJob(false)}
           onSave={async (data) => {
             const created = await api.createJob(data);
@@ -216,6 +256,7 @@ export default function JobsPage() {
       {editingJob && (
         <JobModal
           job={editingJob}
+          clients={clients}
           onClose={() => setEditingJob(null)}
           onSave={async (data) => {
             await api.updateJob(editingJob.id, data);
@@ -241,14 +282,17 @@ export default function JobsPage() {
             await api.createJob({
               code: values.code || null,
               name: values.name,
-              client_name: values.client_name || null,
+              client_id: await resolveClientId(values.client),
               address: values.address || null,
               status,
               probability: probability != null && !Number.isNaN(probability) ? probability : null,
               notes: values.notes || null,
             });
           }}
-          onDone={loadJobs}
+          onDone={() => {
+            loadJobs();
+            loadClients();
+          }}
         />
       )}
       {showAddPhase && detail && (

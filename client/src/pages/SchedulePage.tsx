@@ -19,6 +19,7 @@ import {
 } from '../lib/dates';
 import { escapeHtml } from '../lib/html';
 import { nzHolidaysInRange } from '../lib/nzHolidays';
+import { NO_CLIENT_COLOR } from '../lib/colors';
 
 type GroupMode = 'employee' | 'job';
 
@@ -79,6 +80,12 @@ export default function SchedulePage() {
 
   const jobsById = useMemo(() => new Map((data?.jobs ?? []).map((j) => [j.id, j])), [data]);
   const employeesById = useMemo(() => new Map((data?.employees ?? []).map((e) => [e.id, e])), [data]);
+  const clientsById = useMemo(() => new Map((data?.clients ?? []).map((c) => [c.id, c])), [data]);
+  // A job's colour is inherited from its linked client — jobs with no
+  // client (or a client that's since been deleted) fall back to a neutral
+  // tint rather than showing as blank/undefined everywhere.
+  const jobColorFor = (job: Job | undefined) =>
+    (job?.client_id != null ? clientsById.get(job.client_id)?.color : undefined) ?? NO_CLIENT_COLOR;
 
   // A specific status pick is authoritative (shows that status regardless
   // of the coarse "show completed/lost" toggle); "All statuses" falls back
@@ -91,7 +98,8 @@ export default function SchedulePage() {
     }
     if (search.trim()) {
       const q = search.trim().toLowerCase();
-      const haystack = `${job.name} ${job.code ?? ''} ${job.client_name ?? ''}`.toLowerCase();
+      const clientName = job.client_id != null ? clientsById.get(job.client_id)?.name ?? '' : '';
+      const haystack = `${job.name} ${job.code ?? ''} ${clientName}`.toLowerCase();
       if (!haystack.includes(q)) return false;
     }
     return true;
@@ -130,7 +138,7 @@ export default function SchedulePage() {
       const items: TLItem[] = visibleAssignments.map((a) => {
         const job = jobsById.get(a.job_id!);
         const label = `${job ? escapeHtml(job.name) : ''} — ${a.phase_name ? escapeHtml(a.phase_name) : ''}`;
-        const item = buildItem(a, `emp-${a.employee_id}`, label, job);
+        const item = buildItem(a, `emp-${a.employee_id}`, label, job, jobColorFor(job));
         item.className += ' staff-bar';
         return item;
       });
@@ -162,16 +170,18 @@ export default function SchedulePage() {
       // combined, and not a flat sum of every phase's estimate, which
       // overstates things whenever phases don't all run at once.
       const jobEstimatedStaff = computeJobPeakEstimatedStaff(jobPhases);
+      const jobColor = jobColorFor(job);
+      const client = job.client_id != null ? clientsById.get(job.client_id) : undefined;
 
       // Match the Jobs page's own list styling exactly: 10px dot, 12px dim
       // code, 14px bold name on line one; 12px dim meta line underneath.
-      const jobSwatch = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${job.color};margin-right:8px;"></span>`;
+      const jobSwatch = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${jobColor};margin-right:8px;"></span>`;
       const jobCodePrefix = job.code ? `<span style="font-size:12px;color:var(--text-dim);">${escapeHtml(job.code)}</span> ` : '';
       const jobContent = compact
         ? `${jobSwatch}${jobCodePrefix}<strong style="font-size:13px;">${escapeHtml(job.name)}</strong>`
         : (() => {
-            const jobStatusPill = `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.02em;background:${job.color};color:#fff;">${JOB_STATUS_LABELS[job.status]}</span>`;
-            const jobMetaLine = `${jobStatusPill} · ${job.client_name ? escapeHtml(job.client_name) : 'No client set'}`;
+            const jobStatusPill = `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.02em;background:${jobColor};color:#fff;">${JOB_STATUS_LABELS[job.status]}</span>`;
+            const jobMetaLine = `${jobStatusPill} · ${client ? escapeHtml(client.name) : 'No client set'}`;
             return `${jobSwatch}${jobCodePrefix}<strong style="font-size:14px;">${escapeHtml(job.name)}</strong><div style="font-size:12px;color:var(--text-dim);margin-top:4px;">${jobMetaLine}</div>`;
           })();
 
@@ -180,7 +190,7 @@ export default function SchedulePage() {
         content: jobContent,
         nestedGroups: compact ? undefined : jobPhases.map((p) => `phase-${p.id}`),
         className: `tl-job-group${altClass}${compact ? ' tl-compact' : ''}`,
-        style: `--job-color: ${job.color}`,
+        style: `--job-color: ${jobColor}`,
       });
       if (!compact) {
         for (const phase of jobPhases) {
@@ -189,7 +199,7 @@ export default function SchedulePage() {
           ).size;
           const phaseMetaLine = `${formatShortDate(phase.start_date)} – ${formatShortDate(phase.end_date)}${phaseStaffCount ? ` · ${phaseStaffCount} staff` : ''}`;
           const phaseContent = `<div class="tl-phase-title-row"><span class="tl-phase-index">${phase.sequence}</span><strong class="tl-phase-name">${escapeHtml(phase.name)}</strong></div><div class="tl-phase-meta">${phaseMetaLine}</div>`;
-          groups.push({ id: `phase-${phase.id}`, content: phaseContent, className: `tl-phase-group${altClass}`, style: `--job-color: ${job.color}` });
+          groups.push({ id: `phase-${phase.id}`, content: phaseContent, className: `tl-phase-group${altClass}`, style: `--job-color: ${jobColor}` });
 
           // Show any estimate as its own placeholder bar alongside whatever
           // real staff bars this phase already has.
@@ -202,7 +212,7 @@ export default function SchedulePage() {
               end: parseISODateLocal(isoDatePlusOne(phase.end_date)),
               className: 'tl-item estimate-bar',
               title: `${phase.name} · ~${phase.estimated_staff} staff estimated · ${formatShortDate(phase.start_date)} – ${formatShortDate(phase.end_date)}`,
-              style: `--job-color: ${job.color}`,
+              style: `--job-color: ${jobColor}`,
               editable: false,
             });
           }
@@ -228,7 +238,7 @@ export default function SchedulePage() {
           end: parseISODateLocal(isoDatePlusOne(maxEnd)),
           className: classes.join(' '),
           title: `${job.name} · ${formatShortDate(minStart)} – ${formatShortDate(maxEnd)}`,
-          style: `--job-color: ${job.color}`,
+          style: `--job-color: ${jobColor}`,
           editable: false,
         });
       }
@@ -241,7 +251,7 @@ export default function SchedulePage() {
         // Colour by employee, not job — the job's colour already carries the
         // phase rows and summary bar, so tinting staff bars by employee is
         // what lets you tell who's on a phase without opening it.
-        const item = buildItem(a, `phase-${a.phase_id}`, employee ? escapeHtml(employee.name) : '', job, employee?.color);
+        const item = buildItem(a, `phase-${a.phase_id}`, employee ? escapeHtml(employee.name) : '', job, employee?.color ?? jobColorFor(job));
         item.className += ' staff-bar';
         items.push(item);
       }
@@ -501,6 +511,7 @@ export default function SchedulePage() {
       {editingJob && (
         <JobModal
           job={editingJob}
+          clients={data.clients}
           onClose={() => setEditingJob(null)}
           onSave={async (patch) => {
             await api.updateJob(editingJob.id, patch);
@@ -578,7 +589,7 @@ function computeJobPeakEstimatedStaff(jobPhases: Phase[]): number {
   return peak;
 }
 
-function buildItem(a: Assignment, group: string, content: string, job: Job | undefined, color?: string): TLItem {
+function buildItem(a: Assignment, group: string, content: string, job: Job | undefined, color: string): TLItem {
   const classes = ['tl-item'];
   if (job && TENTATIVE_STATUSES.has(job.status)) classes.push('tentative');
   if (job) classes.push(`status-${job.status}`);
@@ -592,7 +603,7 @@ function buildItem(a: Assignment, group: string, content: string, job: Job | und
     end: parseISODateLocal(isoDatePlusOne(a.end_date)),
     className: classes.join(' '),
     title: `${content} · ${formatShortDate(a.start_date)} – ${formatShortDate(a.end_date)}${a.allocation_pct < 100 ? ` · ${a.allocation_pct}%` : ''}${a.conflict ? ' · OVER-ALLOCATED' : ''}`,
-    style: `--job-color: ${color ?? job?.color ?? '#4f7cff'}`,
+    style: `--job-color: ${color}`,
   };
 }
 

@@ -107,7 +107,10 @@ out and they'll need to log in again — nothing else is lost.
   overlapping dates are outlined in red.
 - **Jobs** — manage jobs (including pipeline/quoted jobs you're pricing) and
   break each one into phases (e.g. Tear-off, Install, Flashing), each with its
-  own dates.
+  own dates. Link a job to a client to inherit that client's colour.
+- **Clients** — manage your client list and each one's colour — a job's
+  colour on the Schedule always comes from its linked client, not the job
+  itself.
 - **Employees** — manage your staff list.
 
 ## Development mode

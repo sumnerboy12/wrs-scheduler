@@ -6,18 +6,23 @@ const router = Router();
 // Client first, then job code — with jobs missing either sorted to the end
 // rather than SQLite's default of NULLs-first, so newly created pipeline
 // jobs (which often don't have a client/code yet) don't jump to the top.
+// Client name lives on the linked clients row now, hence the join.
+const JOB_LIST_BASE = `
+  FROM jobs
+  LEFT JOIN clients ON clients.id = jobs.client_id
+`;
 const JOB_ORDER = `
-  client_name IS NULL, client_name COLLATE NOCASE,
-  code IS NULL, code COLLATE NOCASE
+  ORDER BY clients.name IS NULL, clients.name COLLATE NOCASE,
+    jobs.code IS NULL, jobs.code COLLATE NOCASE
 `;
 
 router.get('/', (req, res) => {
   const { status } = req.query;
   let rows;
   if (status) {
-    rows = db.prepare(`SELECT * FROM jobs WHERE status = ? ORDER BY ${JOB_ORDER}`).all(status);
+    rows = db.prepare(`SELECT jobs.* ${JOB_LIST_BASE} WHERE jobs.status = ? ${JOB_ORDER}`).all(status);
   } else {
-    rows = db.prepare(`SELECT * FROM jobs ORDER BY ${JOB_ORDER}`).all();
+    rows = db.prepare(`SELECT jobs.* ${JOB_LIST_BASE} ${JOB_ORDER}`).all();
   }
   res.json(rows);
 });
@@ -31,22 +36,21 @@ router.get('/:id', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { code, name, client_name, address, status, probability, color, notes } = req.body;
+  const { code, name, client_id, address, status, probability, notes } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'name is required' });
 
   const result = db
     .prepare(
-      `INSERT INTO jobs (code, name, client_name, address, status, probability, color, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO jobs (code, name, client_id, address, status, probability, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       code || null,
       name.trim(),
-      client_name || null,
+      client_id || null,
       address || null,
       status || 'pipeline',
       probability ?? null,
-      color || '#2e9e5b',
       notes || null
     );
 
@@ -59,19 +63,18 @@ router.put('/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM jobs WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'not found' });
 
-  const { code, name, client_name, address, status, probability, color, notes } = req.body;
+  const { code, name, client_id, address, status, probability, notes } = req.body;
   db.prepare(
     `UPDATE jobs SET
-       code = ?, name = ?, client_name = ?, address = ?, status = ?, probability = ?, color = ?, notes = ?, updated_at = datetime('now')
+       code = ?, name = ?, client_id = ?, address = ?, status = ?, probability = ?, notes = ?, updated_at = datetime('now')
      WHERE id = ?`
   ).run(
     code ?? existing.code,
     name ?? existing.name,
-    client_name ?? existing.client_name,
+    client_id !== undefined ? client_id : existing.client_id,
     address ?? existing.address,
     status ?? existing.status,
     probability ?? existing.probability,
-    color ?? existing.color,
     notes ?? existing.notes,
     id
   );

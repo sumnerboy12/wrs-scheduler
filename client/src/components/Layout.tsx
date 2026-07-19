@@ -43,6 +43,9 @@ export default function Layout() {
           <NavLink to="/jobs" style={navStyle}>
             Jobs
           </NavLink>
+          <NavLink to="/clients" style={navStyle}>
+            Clients
+          </NavLink>
           <NavLink to="/employees" style={navStyle}>
             Employees
           </NavLink>

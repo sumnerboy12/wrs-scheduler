@@ -13,6 +13,7 @@ import './db/seedAdmin.js';
 import { requireAuth } from './middleware/auth.js';
 import authRouter from './routes/auth.js';
 import usersRouter from './routes/users.js';
+import clientsRouter from './routes/clients.js';
 import employeesRouter from './routes/employees.js';
 import jobsRouter from './routes/jobs.js';
 import phasesRouter from './routes/phases.js';
@@ -43,6 +44,7 @@ app.use(
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 
+app.use('/api/clients', requireAuth, clientsRouter);
 app.use('/api/employees', requireAuth, employeesRouter);
 app.use('/api/jobs', requireAuth, jobsRouter);
 app.use('/api/phases', requireAuth, phasesRouter);

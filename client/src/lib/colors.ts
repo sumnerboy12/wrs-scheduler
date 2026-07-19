@@ -22,3 +22,7 @@ export const SWATCH_COLORS = [
   '#f43f5e', // rose
   '#64748b', // slate
 ] as const;
+
+// Fallback tint for a job with no linked client — deliberately outside the
+// swatch list above so it never reads as someone's deliberate colour choice.
+export const NO_CLIENT_COLOR = '#475569';

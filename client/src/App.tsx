@@ -5,6 +5,7 @@ import ChangePasswordModal from './components/ChangePasswordModal';
 import LoginPage from './pages/LoginPage';
 import SchedulePage from './pages/SchedulePage';
 import JobsPage from './pages/JobsPage';
+import ClientsPage from './pages/ClientsPage';
 import EmployeesPage from './pages/EmployeesPage';
 import UsersPage from './pages/UsersPage';
 
@@ -22,6 +23,7 @@ function Gate() {
       <Route element={<Layout />}>
         <Route index element={<SchedulePage />} />
         <Route path="jobs" element={<JobsPage />} />
+        <Route path="clients" element={<ClientsPage />} />
         <Route path="employees" element={<EmployeesPage />} />
         <Route path="users" element={<UsersPage />} />
       </Route>

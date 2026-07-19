@@ -18,15 +18,21 @@ export interface Employee {
   notes: string | null;
 }
 
+export interface Client {
+  id: number;
+  name: string;
+  color: string;
+  notes: string | null;
+}
+
 export interface Job {
   id: number;
   code: string | null;
   name: string;
-  client_name: string | null;
+  client_id: number | null;
   address: string | null;
   status: JobStatus;
   probability: number | null;
-  color: string;
   notes: string | null;
 }
 
@@ -66,6 +72,7 @@ export interface TimelinePayload {
   jobs: Job[];
   phases: Phase[];
   assignments: Assignment[];
+  clients: Client[];
 }
 
 export interface AuthUser {
