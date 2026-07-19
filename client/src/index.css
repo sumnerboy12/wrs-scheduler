@@ -424,15 +424,52 @@ tbody tr:nth-child(even) {
   font-size: 12px;
 }
 
+/* vis-timeline appends its TimeAxis (grid lines) component before its
+   ItemSet component, so — with no z-index set anywhere — the itemset's
+   own background layer (where weekend/holiday items live) paints over
+   the month/day grid lines rather than under them. Pin an explicit
+   stacking order: grid lines above everything, then assignment bars,
+   then weekend/holiday shading, then the row-band stripes at the bottom.
+   All the relevant elements are already `position: absolute` in
+   vis-timeline's own stylesheet, so z-index applies directly without
+   extra positioning.
+
+   `.vis-group` (row-band stripes) and `.vis-item` (assignment bars) are
+   DOM siblings inside the same `.vis-foreground` container — giving that
+   whole container one blanket z-index traps them together as a single
+   unit, which is exactly what breaks sandwiching the weekend/holiday
+   layer between them (a translucent row-band tint stacked on top of an
+   already-translucent weekend/holiday tint compounds into a visibly
+   duller shade on alternating rows). So z-index the two sibling types
+   individually instead — `.vis-group` is left at its default (auto),
+   which still loses to any explicit z-index below. */
+.vis-itemset .vis-background {
+  z-index: 1;
+}
+
+.vis-item:not(.vis-background) {
+  z-index: 2;
+}
+
+.vis-time-axis.vis-background {
+  z-index: 3 !important;
+  /* Purely decorative grid lines — without this, sitting visually on top
+     means native pointer/wheel events target this element instead of
+     bubbling through the itemset's own ancestor chain underneath, which
+     is where vis-timeline's pan/zoom/select gesture handlers are bound.
+     That silently killed all timeline interaction. */
+  pointer-events: none;
+}
+
 /* Weekend/holiday shading — full-height background items, rendered
    behind every row and every assignment bar. */
 .vis-item.vis-background.tl-weekend {
-  background-color: rgba(255, 255, 255, 0.035) !important;
+  background-color: rgba(255, 255, 255, 0.07) !important;
   border: none !important;
 }
 
 .vis-item.vis-background.tl-holiday {
-  background-color: rgba(229, 72, 77, 0.14) !important;
+  background-color: rgba(229, 72, 77, 0.24) !important;
   border: none !important;
 }
 
