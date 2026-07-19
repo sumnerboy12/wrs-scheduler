@@ -54,6 +54,7 @@ interface Props {
   onWindowChange: (start: Date, end: Date) => void;
   onItemDoubleClick: (itemId: number | string) => void;
   onEmptyDoubleClick: (groupId: string, time: Date) => void;
+  onLabelDoubleClick: (groupId: string) => void;
   onItemMoved: (itemId: number | string, start: Date, end: Date, groupId: string) => void;
 }
 
@@ -64,15 +65,16 @@ export default function TimelineView({
   onWindowChange,
   onItemDoubleClick,
   onEmptyDoubleClick,
+  onLabelDoubleClick,
   onItemMoved,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<Timeline | null>(null);
   const groupsDataSet = useRef(new DataSet<TLGroup>([]));
   const itemsDataSet = useRef(new DataSet<TLItem>([]));
-  const callbacksRef = useRef({ onItemDoubleClick, onEmptyDoubleClick, onItemMoved, onWindowChange });
+  const callbacksRef = useRef({ onItemDoubleClick, onEmptyDoubleClick, onLabelDoubleClick, onItemMoved, onWindowChange });
 
-  callbacksRef.current = { onItemDoubleClick, onEmptyDoubleClick, onItemMoved, onWindowChange };
+  callbacksRef.current = { onItemDoubleClick, onEmptyDoubleClick, onLabelDoubleClick, onItemMoved, onWindowChange };
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -119,6 +121,8 @@ export default function TimelineView({
     timeline.on('doubleClick', (props: any) => {
       if (props.item != null) {
         callbacksRef.current.onItemDoubleClick(props.item);
+      } else if (props.what === 'group-label' && props.group != null) {
+        callbacksRef.current.onLabelDoubleClick(props.group);
       } else if (props.group != null && props.time) {
         callbacksRef.current.onEmptyDoubleClick(props.group, props.time);
       }

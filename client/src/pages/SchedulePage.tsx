@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
-import type { Assignment, Job, TimelinePayload } from '../types';
+import type { Assignment, Job, Phase, TimelinePayload } from '../types';
 import { JOB_STATUS_LABELS } from '../types';
 import TimelineView, { type TLGroup, type TLItem } from '../components/TimelineView';
 import AssignmentModal from '../components/AssignmentModal';
+import JobModal from '../components/JobModal';
+import PhaseModal from '../components/PhaseModal';
 import {
   addDays,
   addMonths,
@@ -64,6 +66,8 @@ export default function SchedulePage() {
     return presetWindow('month', new Date());
   });
   const [editing, setEditing] = useState<Assignment | null>(null);
+  const [editingJob, setEditingJob] = useState<Job | null>(null);
+  const [editingPhase, setEditingPhase] = useState<Phase | null>(null);
   const [creating, setCreating] = useState<{ employeeId?: number; jobId?: number; phaseId?: number; date?: string } | null>(null);
 
   const centerRef = useRef(window ? new Date((window.start.getTime() + window.end.getTime()) / 2) : new Date());
@@ -238,9 +242,28 @@ export default function SchedulePage() {
   }, [groupMode, preset, showClosed, compact]);
 
   const handleItemDoubleClick = (itemId: number | string) => {
-    if (typeof itemId === 'string') return; // job summary bar — not an editable assignment
+    if (typeof itemId === 'string') {
+      if (itemId.startsWith('job-summary-')) {
+        const jobId = Number(itemId.replace('job-summary-', ''));
+        const job = data?.jobs.find((j) => j.id === jobId);
+        if (job) setEditingJob(job);
+      }
+      return;
+    }
     const assignment = data?.assignments.find((a) => a.id === itemId);
     if (assignment) setEditing(assignment);
+  };
+
+  const handleLabelDoubleClick = (groupId: string) => {
+    if (groupId.startsWith('job-')) {
+      const jobId = Number(groupId.replace('job-', ''));
+      const job = data?.jobs.find((j) => j.id === jobId);
+      if (job) setEditingJob(job);
+    } else if (groupId.startsWith('phase-')) {
+      const phaseId = Number(groupId.replace('phase-', ''));
+      const phase = data?.phases.find((p) => p.id === phaseId);
+      if (phase) setEditingPhase(phase);
+    }
   };
 
   const handleEmptyDoubleClick = (groupId: string, time: Date) => {
@@ -407,6 +430,7 @@ export default function SchedulePage() {
           onWindowChange={handleWindowChange}
           onItemDoubleClick={handleItemDoubleClick}
           onEmptyDoubleClick={handleEmptyDoubleClick}
+          onLabelDoubleClick={handleLabelDoubleClick}
           onItemMoved={handleItemMoved}
         />
       </div>
@@ -441,6 +465,37 @@ export default function SchedulePage() {
           onClose={() => setCreating(null)}
           onSave={async (patch) => {
             await api.createAssignment(patch);
+            load();
+          }}
+        />
+      )}
+      {editingJob && (
+        <JobModal
+          job={editingJob}
+          onClose={() => setEditingJob(null)}
+          onSave={async (patch) => {
+            await api.updateJob(editingJob.id, patch);
+            load();
+          }}
+          onDelete={async (id) => {
+            await api.deleteJob(id);
+            setEditingJob(null);
+            load();
+          }}
+        />
+      )}
+      {editingPhase && (
+        <PhaseModal
+          phase={editingPhase}
+          defaultSequence={editingPhase.sequence}
+          onClose={() => setEditingPhase(null)}
+          onSave={async (patch) => {
+            await api.updatePhase(editingPhase.id, patch);
+            load();
+          }}
+          onDelete={async (id) => {
+            await api.deletePhase(id);
+            setEditingPhase(null);
             load();
           }}
         />
