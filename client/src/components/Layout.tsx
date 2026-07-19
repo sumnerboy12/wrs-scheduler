@@ -6,7 +6,10 @@ import ChangePasswordModal from './ChangePasswordModal';
 const navStyle = ({ isActive }: { isActive: boolean }) => ({
   padding: '10px 16px',
   color: isActive ? 'white' : 'var(--text-dim)',
-  background: isActive ? 'var(--accent)' : 'transparent',
+  // --nav-accent rather than --accent — keeps the main nav visually
+  // distinct from in-page toolbar controls (period/grouping toggles),
+  // which use --accent.
+  background: isActive ? 'var(--nav-accent)' : 'transparent',
   borderRadius: 6,
   textDecoration: 'none',
   fontWeight: isActive ? 600 : 500,

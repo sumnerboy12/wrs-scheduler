@@ -6,6 +6,10 @@
   --text: #e6e9f2;
   --text-dim: #9aa4bf;
   --accent: #4f7cff;
+  /* Distinct from --accent (used by in-page toolbar controls like the
+     Quarter/Month/Week/Day and By Employee/By Job toggles) so the main
+     top-level nav reads as a different tier of control at a glance. */
+  --nav-accent: #8b5cf6;
   --danger: #e5484d;
   --radius: 8px;
   font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
