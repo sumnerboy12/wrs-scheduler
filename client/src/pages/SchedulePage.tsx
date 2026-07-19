@@ -54,6 +54,8 @@ export default function SchedulePage() {
   const [groupMode, setGroupMode] = useState<GroupMode>(() => loadPersistedView()?.groupMode ?? 'employee');
   const [preset, setPreset] = useState<ZoomPreset>(() => loadPersistedView()?.preset ?? 'month');
   const [showClosed, setShowClosed] = useState(() => loadPersistedView()?.showClosed ?? false);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [window, setWindow] = useState<{ start: Date; end: Date } | null>(() => {
     const persisted = loadPersistedView();
     if (persisted) return { start: new Date(persisted.start), end: new Date(persisted.end) };
@@ -72,15 +74,32 @@ export default function SchedulePage() {
   const jobsById = useMemo(() => new Map((data?.jobs ?? []).map((j) => [j.id, j])), [data]);
   const employeesById = useMemo(() => new Map((data?.employees ?? []).map((e) => [e.id, e])), [data]);
 
+  // A specific status pick is authoritative (shows that status regardless
+  // of the coarse "show completed/lost" toggle); "All statuses" falls back
+  // to the existing showClosed behaviour.
+  const jobVisible = (job: Job) => {
+    if (statusFilter !== 'all') {
+      if (job.status !== statusFilter) return false;
+    } else if (!showClosed && (job.status === 'complete' || job.status === 'lost')) {
+      return false;
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      const haystack = `${job.name} ${job.code ?? ''} ${job.client_name ?? ''}`.toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  };
+
   const visibleAssignments = useMemo(() => {
     if (!data) return [];
     return data.assignments.filter((a) => {
       const job = jobsById.get(a.job_id!);
       if (!job) return false;
-      if (!showClosed && (job.status === 'complete' || job.status === 'lost')) return false;
-      return true;
+      return jobVisible(job);
     });
-  }, [data, jobsById, showClosed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, jobsById, showClosed, statusFilter, search]);
 
   const { groups, items } = useMemo(() => {
     if (!data) return { groups: [] as TLGroup[], items: [] as TLItem[] };
@@ -112,7 +131,7 @@ export default function SchedulePage() {
 
     let jobIndex = 0;
     for (const job of data.jobs) {
-      if (!showClosed && (job.status === 'complete' || job.status === 'lost')) continue;
+      if (!jobVisible(job)) continue;
       // Band the whole job — its header row and every phase row — as one
       // unit, alternating per job, so adjacent jobs stay easy to tell apart
       // without fighting the existing header-vs-phase shading.
@@ -181,7 +200,8 @@ export default function SchedulePage() {
     }
 
     return { groups, items };
-  }, [data, groupMode, visibleAssignments, jobsById, employeesById, showClosed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, groupMode, visibleAssignments, jobsById, employeesById, showClosed, statusFilter, search]);
 
   const applyPreset = (p: ZoomPreset) => {
     setPreset(p);
@@ -292,8 +312,31 @@ export default function SchedulePage() {
           </button>
         </div>
 
+        <input
+          type="text"
+          placeholder="Search job name, code, client…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ width: 220 }}
+        />
+
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: 160 }}>
+          <option value="all">All statuses</option>
+          {Object.entries(JOB_STATUS_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+
         <label style={{ fontSize: 13, color: 'var(--text-dim)', display: 'flex', gap: 6, alignItems: 'center' }}>
-          <input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} style={{ width: 'auto' }} />
+          <input
+            type="checkbox"
+            checked={showClosed}
+            onChange={(e) => setShowClosed(e.target.checked)}
+            disabled={statusFilter !== 'all'}
+            style={{ width: 'auto' }}
+          />
           Show completed / lost jobs
         </label>
 
@@ -304,7 +347,7 @@ export default function SchedulePage() {
 
       <div style={{ padding: '8px 20px', borderBottom: '1px solid var(--border)' }} className="legend">
         {Object.entries(JOB_STATUS_LABELS)
-          .filter(([s]) => showClosed || (s !== 'complete' && s !== 'lost'))
+          .filter(([s]) => (statusFilter === 'all' ? showClosed || (s !== 'complete' && s !== 'lost') : s === statusFilter))
           .map(([status, label]) => (
             <span key={status}>
               <span

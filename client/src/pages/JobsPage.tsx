@@ -27,6 +27,7 @@ export default function JobsPage() {
   const [showAddPhase, setShowAddPhase] = useState(false);
   const [editingPhase, setEditingPhase] = useState<Phase | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [search, setSearch] = useState('');
 
   const loadJobs = () => api.getJobs().then(setJobs);
   const loadDetail = (id: number) => api.getJob(id).then(setDetail);
@@ -44,12 +45,27 @@ export default function JobsPage() {
     if (jobs.length && selectedId == null) setSelectedId(jobs[0].id);
   }, [jobs]);
 
-  const visibleJobs = jobs.filter((j) => statusFilter === 'all' || j.status === statusFilter);
+  const visibleJobs = jobs.filter((j) => {
+    if (statusFilter !== 'all' && j.status !== statusFilter) return false;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      const haystack = `${j.name} ${j.code ?? ''} ${j.client_name ?? ''}`.toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  });
 
   return (
     <div style={{ display: 'flex', height: '100%' }}>
       <div style={{ width: 320, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: 12, display: 'flex', gap: 8, borderBottom: '1px solid var(--border)' }}>
+        <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8, borderBottom: '1px solid var(--border)' }}>
+          <input
+            type="text"
+            placeholder="Search name, code, client…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div style={{ display: 'flex', gap: 8 }}>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ flex: 1 }}>
             <option value="all">All statuses</option>
             {Object.entries(JOB_STATUS_LABELS).map(([value, label]) => (
@@ -64,6 +80,7 @@ export default function JobsPage() {
           <button className="btn btn-primary" onClick={() => setShowAddJob(true)}>
             + Job
           </button>
+          </div>
         </div>
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {visibleJobs.map((job) => (
