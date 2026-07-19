@@ -31,7 +31,9 @@ export default function AssignmentModal({
 }: Props) {
   const editingPhase = assignment ? phases.find((p) => p.id === assignment.phase_id) : null;
 
-  const [employeeId, setEmployeeId] = useState<number | ''>(assignment?.employee_id ?? defaultEmployeeId ?? '');
+  const [employeeIds, setEmployeeIds] = useState<number[]>(
+    assignment ? [assignment.employee_id] : defaultEmployeeId ? [defaultEmployeeId] : [],
+  );
   const [jobId, setJobId] = useState<number | ''>(editingPhase?.job_id ?? defaultJobId ?? '');
   const [phaseId, setPhaseId] = useState<number | ''>(assignment?.phase_id ?? defaultPhaseId ?? '');
   const [startDate, setStartDate] = useState(assignment?.start_date ?? defaultDate ?? '');
@@ -55,7 +57,7 @@ export default function AssignmentModal({
   };
 
   const handleSave = async () => {
-    if (!employeeId) return setError('Choose an employee');
+    if (employeeIds.length === 0) return setError(assignment ? 'Choose an employee' : 'Choose at least one employee');
     if (!phaseId) return setError('Choose a job phase');
     if (!startDate || !endDate) return setError('Start and end dates are required');
     if (endDate < startDate) return setError('End date must be on or after the start date');
@@ -63,14 +65,19 @@ export default function AssignmentModal({
     setSaving(true);
     setError(null);
     try {
-      await onSave({
-        employee_id: Number(employeeId),
-        phase_id: Number(phaseId),
-        start_date: startDate,
-        end_date: endDate,
-        allocation_pct: Number(allocationPct),
-        notes,
-      });
+      // Editing always targets the one assignment being edited; creating
+      // fires one create per selected employee so a whole crew can be
+      // booked onto the same phase/dates in a single save.
+      for (const employeeId of employeeIds) {
+        await onSave({
+          employee_id: employeeId,
+          phase_id: Number(phaseId),
+          start_date: startDate,
+          end_date: endDate,
+          allocation_pct: Number(allocationPct),
+          notes,
+        });
+      }
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save');
@@ -79,25 +86,63 @@ export default function AssignmentModal({
     }
   };
 
+  const toggleEmployee = (id: number, checked: boolean) => {
+    setEmployeeIds((prev) => (checked ? [...prev, id] : prev.filter((existing) => existing !== id)));
+  };
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h2>{assignment ? 'Edit Assignment' : 'New Assignment'}</h2>
 
-        <div className="field">
-          <label>Employee</label>
-          <select value={employeeId} onChange={(e) => setEmployeeId(Number(e.target.value))}>
-            <option value="" disabled>
-              Select employee…
-            </option>
-            {employees.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.name}
-                {e.role ? ` (${e.role})` : ''}
+        {assignment ? (
+          <div className="field">
+            <label>Employee</label>
+            <select value={employeeIds[0] ?? ''} onChange={(e) => setEmployeeIds([Number(e.target.value)])}>
+              <option value="" disabled>
+                Select employee…
               </option>
-            ))}
-          </select>
-        </div>
+              {employees.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name}
+                  {e.role ? ` (${e.role})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="field">
+            <label>
+              Employees
+              {employeeIds.length > 0 ? ` (${employeeIds.length} selected)` : ''}
+            </label>
+            <div
+              style={{
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                maxHeight: 170,
+                overflowY: 'auto',
+                padding: '4px 8px',
+              }}
+            >
+              {employees.map((e) => (
+                <label key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 14 }}>
+                  <input
+                    type="checkbox"
+                    style={{ width: 'auto' }}
+                    checked={employeeIds.includes(e.id)}
+                    onChange={(ev) => toggleEmployee(e.id, ev.target.checked)}
+                  />
+                  {e.name}
+                  {e.role ? ` (${e.role})` : ''}
+                </label>
+              ))}
+              {employees.length === 0 && (
+                <div style={{ color: 'var(--text-dim)', fontSize: 13, padding: '4px 0' }}>No employees available.</div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="field">
           <label>Job</label>
