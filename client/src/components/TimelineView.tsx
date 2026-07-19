@@ -109,6 +109,16 @@ export default function TimelineView({
       // user-entered text via escapeHtml() before interpolating it, so
       // it's safe to trust here.
       xss: { disabled: true },
+      // Estimate-placeholder bars (phase-estimate-*) should always stack
+      // above a phase's real staff bars, so the "no one's assigned yet"
+      // signal stays visible rather than getting buried underneath actual
+      // assignments once someone's booked on.
+      order: (a: any, b: any) => {
+        const aIsEstimate = typeof a.id === 'string' && a.id.startsWith('phase-estimate-');
+        const bIsEstimate = typeof b.id === 'string' && b.id.startsWith('phase-estimate-');
+        if (aIsEstimate !== bIsEstimate) return aIsEstimate ? -1 : 1;
+        return a.start - b.start;
+      },
       snap: (date: Date) => snapToNearestLocalDay(date),
       onMove: (item: any, callback: (item: any) => void) => {
         callbacksRef.current.onItemMoved(item.id, item.start, item.end, item.group);

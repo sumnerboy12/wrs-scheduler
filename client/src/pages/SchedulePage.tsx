@@ -150,13 +150,18 @@ export default function SchedulePage() {
       const altClass = jobIndex % 2 === 1 ? ' tl-row-alt' : '';
       jobIndex++;
       const jobPhases = data.phases.filter((p) => p.job_id === job.id);
-      const jobStaffCount = new Set(visibleAssignments.filter((a) => a.job_id === job.id).map((a) => a.employee_id)).size;
-      // Pipeline/quoted jobs typically have no real assignments yet — the
-      // estimate is what carries the "how many people would this need"
-      // signal until someone's actually booked onto it.
-      const jobEstimatedStaff = TENTATIVE_STATUSES.has(job.status)
-        ? jobPhases.reduce((sum, p) => sum + (p.estimated_staff ?? 0), 0)
-        : 0;
+      // Peak concurrent actual staff across the job's timeline (distinct
+      // employees actually working on the same day, maxed over every
+      // day) — not a flat distinct count across the whole job, which
+      // overstates things whenever different people work non-overlapping
+      // phases.
+      const jobStaffCount = computeJobPeakActualStaff(job.id, jobPhases, visibleAssignments);
+      // Peak estimated need across the job's timeline (estimates for
+      // phases active on the same day, maxed over every day) — kept
+      // separate from jobStaffCount (actual assignments) rather than
+      // combined, and not a flat sum of every phase's estimate, which
+      // overstates things whenever phases don't all run at once.
+      const jobEstimatedStaff = computeJobPeakEstimatedStaff(jobPhases);
 
       // Match the Jobs page's own list styling exactly: 10px dot, 12px dim
       // code, 14px bold name on line one; 12px dim meta line underneath.
@@ -186,10 +191,9 @@ export default function SchedulePage() {
           const phaseContent = `<div class="tl-phase-title-row"><span class="tl-phase-index">${phase.sequence}</span><strong class="tl-phase-name">${escapeHtml(phase.name)}</strong></div><div class="tl-phase-meta">${phaseMetaLine}</div>`;
           groups.push({ id: `phase-${phase.id}`, content: phaseContent, className: `tl-phase-group${altClass}`, style: `--job-color: ${job.color}` });
 
-          // Pipeline/quoted phases aren't assigned to real employees yet —
-          // show the estimate as its own placeholder bar rather than
-          // leaving the row empty.
-          if (TENTATIVE_STATUSES.has(job.status) && phase.estimated_staff) {
+          // Show any estimate as its own placeholder bar alongside whatever
+          // real staff bars this phase already has.
+          if (phase.estimated_staff) {
             items.push({
               id: `phase-estimate-${phase.id}`,
               group: `phase-${phase.id}`,
@@ -422,28 +426,20 @@ export default function SchedulePage() {
       </div>
 
       <div style={{ padding: '8px 20px', borderBottom: '1px solid var(--border)' }} className="legend">
-        {Object.entries(JOB_STATUS_LABELS)
-          .filter(([s]) => (statusFilter === 'all' ? showClosed || (s !== 'complete' && s !== 'lost') : s === statusFilter))
-          .map(([status, label]) => (
-            <span key={status}>
-              <span
-                className="legend-swatch"
-                style={
-                  TENTATIVE_STATUSES.has(status)
-                    ? { background: 'repeating-linear-gradient(45deg, #6b7690, #6b7690 3px, transparent 3px, transparent 6px)', border: '1px dashed #6b7690' }
-                    : { background: '#6b7690' }
-                }
-              />
-              {label}
-            </span>
-          ))}
+        <span>
+          <span
+            className="legend-swatch"
+            style={{ background: 'repeating-linear-gradient(45deg, #6b7690, #6b7690 3px, transparent 3px, transparent 6px)', border: '1px dashed #6b7690' }}
+          />
+          Pipeline / Quoted
+        </span>
         <span>
           <span className="legend-swatch" style={{ background: 'transparent', boxShadow: '0 0 0 2px var(--danger)' }} />
-          Over-allocated
+          Employee over allocated
         </span>
         <span>
           <span className="legend-swatch" style={{ background: 'rgba(250, 176, 5, 0.6)' }} />
-          Estimated demand exceeds headcount
+          Estimate exceeds headcount
         </span>
         <span style={{ marginLeft: 'auto' }}>Double-click an empty slot to add · double-click a bar to edit · drag to reschedule</span>
       </div>
@@ -537,6 +533,51 @@ export default function SchedulePage() {
   );
 }
 
+// Peak actual staff for one job: for each day across its phases' combined
+// span, the count of distinct employees actually assigned that day, then
+// the max of that across every day. Not a flat distinct count across the
+// whole job — two people working non-overlapping phases would otherwise
+// count as "2 staff" even though only one was ever on site at a time.
+function computeJobPeakActualStaff(jobId: number, jobPhases: Phase[], assignments: Assignment[]): number {
+  if (jobPhases.length === 0) return 0;
+
+  const minStart = jobPhases.reduce((min, p) => (p.start_date < min ? p.start_date : min), jobPhases[0].start_date);
+  const maxEnd = jobPhases.reduce((max, p) => (p.end_date > max ? p.end_date : max), jobPhases[0].end_date);
+
+  let peak = 0;
+  for (let d = parseISODateLocal(minStart); d <= parseISODateLocal(maxEnd); d = addDays(d, 1)) {
+    const iso = toISODate(d);
+    const realCount = new Set(
+      assignments.filter((a) => a.job_id === jobId && a.start_date <= iso && a.end_date >= iso).map((a) => a.employee_id),
+    ).size;
+    peak = Math.max(peak, realCount);
+  }
+  return peak;
+}
+
+// Peak estimated staff need for one job: for each day across its phases'
+// combined span, the sum of estimates for phases active that day, then
+// the max of that across every day. Deliberately excludes real
+// assignments (shown separately as jobStaffCount) and isn't a flat sum of
+// every phase's estimate — phases running sequentially rather than at
+// once would otherwise overstate demand.
+function computeJobPeakEstimatedStaff(jobPhases: Phase[]): number {
+  if (!jobPhases.some((p) => p.estimated_staff)) return 0;
+
+  const minStart = jobPhases.reduce((min, p) => (p.start_date < min ? p.start_date : min), jobPhases[0].start_date);
+  const maxEnd = jobPhases.reduce((max, p) => (p.end_date > max ? p.end_date : max), jobPhases[0].end_date);
+
+  let peak = 0;
+  for (let d = parseISODateLocal(minStart); d <= parseISODateLocal(maxEnd); d = addDays(d, 1)) {
+    const iso = toISODate(d);
+    const estimatedCount = jobPhases
+      .filter((p) => p.start_date <= iso && p.end_date >= iso)
+      .reduce((sum, p) => sum + (p.estimated_staff ?? 0), 0);
+    peak = Math.max(peak, estimatedCount);
+  }
+  return peak;
+}
+
 function buildItem(a: Assignment, group: string, content: string, job: Job | undefined, color?: string): TLItem {
   const classes = ['tl-item'];
   if (job && TENTATIVE_STATUSES.has(job.status)) classes.push('tentative');
@@ -600,32 +641,37 @@ function buildDateBackgroundItems(): TLItem[] {
   return items;
 }
 
-// Flags any day where demand for staff — real assignments (each employee
-// counted once, regardless of allocation%) plus pipeline/quoted phase
-// estimates (headcount not yet tied to anyone) — exceeds total active
-// headcount. Answers "could we actually staff this if every quote in the
-// pipeline went ahead," not just "is any one person over-booked."
+// Flags any day where demand for staff exceeds total active headcount.
+// Demand = every real assignee that day (each employee counted once,
+// globally, regardless of allocation%) plus, per phase with an estimate,
+// only the *shortfall* above that phase's own real allocation — an
+// estimate of 3 with 2 people already for-real assigned to that phase
+// contributes 1 more, not 3 more (the 2 are already in the real count).
+// Answers "could we actually staff this if every estimate panned out,"
+// not just "is any one person over-booked."
 function buildCapacityOverflowItems(data: TimelinePayload): TLItem[] {
   const totalEmployees = data.employees.filter((e) => e.active).length;
   if (totalEmployees === 0) return [];
 
   const { rangeStart, rangeEnd } = getScheduleBackgroundRange();
-
-  const estimatedPhases = data.phases
-    .filter((p) => p.estimated_staff)
-    .map((p) => ({ phase: p, job: data.jobs.find((j) => j.id === p.job_id) }))
-    .filter((x): x is { phase: Phase; job: Job } => !!x.job && TENTATIVE_STATUSES.has(x.job.status));
+  const estimatedPhases = data.phases.filter((p) => p.estimated_staff);
 
   const overflowDays: string[] = [];
   for (let d = new Date(rangeStart); d < rangeEnd; d = addDays(d, 1)) {
     const iso = toISODate(d);
-    const realCount = new Set(
-      data.assignments.filter((a) => a.start_date <= iso && a.end_date >= iso).map((a) => a.employee_id),
-    ).size;
-    const estimatedCount = estimatedPhases
-      .filter(({ phase }) => phase.start_date <= iso && phase.end_date >= iso)
-      .reduce((sum, { phase }) => sum + (phase.estimated_staff ?? 0), 0);
-    if (realCount + estimatedCount > totalEmployees) overflowDays.push(iso);
+    const activeAssignments = data.assignments.filter((a) => a.start_date <= iso && a.end_date >= iso);
+    const realCount = new Set(activeAssignments.map((a) => a.employee_id)).size;
+
+    let extraEstimated = 0;
+    for (const phase of estimatedPhases) {
+      if (phase.start_date > iso || phase.end_date < iso) continue;
+      const phaseActualCount = new Set(
+        activeAssignments.filter((a) => a.phase_id === phase.id).map((a) => a.employee_id),
+      ).size;
+      extraEstimated += Math.max(0, (phase.estimated_staff ?? 0) - phaseActualCount);
+    }
+
+    if (realCount + extraEstimated > totalEmployees) overflowDays.push(iso);
   }
 
   // Merge consecutive overflow days into single spans rather than one
