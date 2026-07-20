@@ -118,8 +118,14 @@ const TimelineView = forwardRef<TimelineViewHandle, Props>(function TimelineView
       zoomMax: 1000 * 60 * 60 * 24 * 400, // ~13 months
       orientation: 'top',
       // margin.axis only pads the row closest to the time axis (the top
-      // row, since orientation is 'top').
-      margin: { item: 6, axis: 2 },
+      // row, since orientation is 'top'). margin.item.horizontal is set to
+      // 0 rather than inheriting the vertical value — vis-timeline pads
+      // each item's effective width by this amount purely to decide
+      // whether two items collide, so a horizontal margin above 0 forces
+      // back-to-back (but non-overlapping) assignments for the same
+      // employee onto separate stacked rows just to keep that gap, even
+      // though they never actually overlap in time.
+      margin: { item: { horizontal: 0, vertical: 6 }, axis: 2 },
       // Pass the restored range up front — if the widget mounts with no
       // configured range, vis-timeline auto-fits to the item data on its
       // first (deferred) redraw and can silently overwrite a range set
