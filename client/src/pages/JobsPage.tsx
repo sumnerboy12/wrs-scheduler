@@ -133,7 +133,6 @@ export default function JobsPage() {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ width: 10, height: 10, borderRadius: '50%', background: jobColor, flexShrink: 0 }} />
-                  {job.code && <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{job.code}</span>}
                   <strong style={{ fontSize: 14 }}>{job.name}</strong>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -154,6 +153,12 @@ export default function JobsPage() {
                   </span>
                   <span>&middot;</span>
                   <span>{JOB_STATUS_LABELS[job.status]}</span>
+                  {job.status !== 'pipeline' && job.status !== 'quoted' && job.code && (
+                    <>
+                      <span>&middot;</span>
+                      <span>{job.code}</span>
+                    </>
+                  )}
                   {(job.status === 'pipeline' || job.status === 'quoted') && job.probability != null && (
                     <>
                       <span>&middot;</span>
@@ -175,19 +180,39 @@ export default function JobsPage() {
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <h1 style={{ margin: 0, fontSize: 20 }}>
-                  {detail.code && <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>{detail.code} &middot; </span>}
-                  {detail.name}
-                </h1>
-                <div style={{ color: 'var(--text-dim)', marginTop: 4 }}>
-                  {clientFor(detail)?.name ?? 'No client set'} &middot; {detail.address}
+                <h1 style={{ margin: 0, fontSize: 20 }}>{detail.name}</h1>
+                <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      padding: '1px 7px',
+                      borderRadius: 999,
+                      fontSize: 10,
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.02em',
+                      background: clientFor(detail)?.color ?? NO_CLIENT_COLOR,
+                      color: '#fff',
+                    }}
+                  >
+                    {clientFor(detail)?.name ?? 'No client set'}
+                  </span>
+                  <span>&middot;</span>
+                  <span>{JOB_STATUS_LABELS[detail.status]}</span>
+                  {detail.status !== 'pipeline' && detail.status !== 'quoted' && detail.code && (
+                    <>
+                      <span>&middot;</span>
+                      <span>{detail.code}</span>
+                    </>
+                  )}
+                  {(detail.status === 'pipeline' || detail.status === 'quoted') && detail.probability != null && (
+                    <>
+                      <span>&middot;</span>
+                      <span>{detail.probability}%</span>
+                    </>
+                  )}
                 </div>
-                <span
-                  className="badge"
-                  style={{ background: clientFor(detail)?.color ?? NO_CLIENT_COLOR, marginTop: 8, display: 'inline-block' }}
-                >
-                  {JOB_STATUS_LABELS[detail.status]}
-                </span>
+                {detail.address && <div style={{ color: 'var(--text-dim)', marginTop: 4 }}>{detail.address}</div>}
               </div>
               <button className="btn" onClick={() => setEditingJob(detail)}>
                 {isReadOnly ? 'View Job' : 'Edit Job'}

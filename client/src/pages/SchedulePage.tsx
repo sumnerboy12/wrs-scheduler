@@ -168,17 +168,18 @@ export default function SchedulePage() {
       const jobColor = jobColorFor(job);
       const client = job.client_id != null ? clientsById.get(job.client_id) : undefined;
 
-      // Match the Jobs page's own list styling exactly: 10px dot, 12px dim
-      // code, 14px bold name on line one; 12px dim meta line underneath.
+      // Match the Jobs page's own list styling exactly: 10px dot, 14px bold
+      // name on line one; 12px dim meta line (client/status/code/probability)
+      // underneath.
       const jobSwatch = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${jobColor};margin-right:8px;"></span>`;
-      const jobCodePrefix = job.code ? `<span style="font-size:12px;color:var(--text-dim);">${escapeHtml(job.code)}</span> ` : '';
       const jobContent = compact
-        ? `${jobSwatch}${jobCodePrefix}<strong style="font-size:13px;">${escapeHtml(job.name)}</strong>`
+        ? `${jobSwatch}<strong style="font-size:13px;">${escapeHtml(job.name)}</strong>`
         : (() => {
             const clientPill = `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.02em;background:${jobColor};color:#fff;">${client ? escapeHtml(client.name) : 'No client set'}</span>`;
+            const showCode = job.status !== 'pipeline' && job.status !== 'quoted' && job.code;
             const showProbability = (job.status === 'pipeline' || job.status === 'quoted') && job.probability != null;
-            const jobMetaLine = `${clientPill} · ${JOB_STATUS_LABELS[job.status]}${showProbability ? ` · ${job.probability}%` : ''}`;
-            return `${jobSwatch}${jobCodePrefix}<strong style="font-size:14px;">${escapeHtml(job.name)}</strong><div style="font-size:12px;color:var(--text-dim);margin-top:4px;">${jobMetaLine}</div>`;
+            const jobMetaLine = `${clientPill} · ${JOB_STATUS_LABELS[job.status]}${showCode ? ` · ${escapeHtml(job.code ?? '')}` : ''}${showProbability ? ` · ${job.probability}%` : ''}`;
+            return `${jobSwatch}<strong style="font-size:14px;">${escapeHtml(job.name)}</strong><div style="font-size:12px;color:var(--text-dim);margin-top:4px;">${jobMetaLine}</div>`;
           })();
 
       groups.push({

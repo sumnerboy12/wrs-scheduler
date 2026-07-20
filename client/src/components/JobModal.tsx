@@ -22,9 +22,15 @@ export default function JobModal({ job, clients, onClose, onSave, onDelete, read
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const codeRequired = status !== 'pipeline' && status !== 'quoted';
+
   const handleSave = async () => {
     if (!name.trim()) {
       setError('Job name is required');
+      return;
+    }
+    if (codeRequired && !code.trim()) {
+      setError('Job code is required');
       return;
     }
     setSaving(true);
@@ -52,21 +58,15 @@ export default function JobModal({ job, clients, onClose, onSave, onDelete, read
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h2>{job ? (readOnly ? 'View Job' : 'Edit Job') : 'New Job'}</h2>
 
-        <div className="row">
-          <div className="field" style={{ flex: '0 0 140px' }}>
-            <label>Job code</label>
-            <input value={code ?? ''} onChange={(e) => setCode(e.target.value)} placeholder="e.g. J-1024" disabled={readOnly} />
-          </div>
-          <div className="field">
-            <label>Job name</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              autoFocus
-              placeholder="e.g. Smith Residence Reroof"
-              disabled={readOnly}
-            />
-          </div>
+        <div className="field">
+          <label>Job name</label>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus
+            placeholder="e.g. Smith Residence Reroof"
+            disabled={readOnly}
+          />
         </div>
         <div className="field">
           <label>Client</label>
@@ -99,7 +99,12 @@ export default function JobModal({ job, clients, onClose, onSave, onDelete, read
               ))}
             </select>
           </div>
-          {(status === 'pipeline' || status === 'quoted') && (
+          {codeRequired ? (
+            <div className="field">
+              <label>Job code</label>
+              <input value={code ?? ''} onChange={(e) => setCode(e.target.value)} placeholder="e.g. J-1024" disabled={readOnly} />
+            </div>
+          ) : (
             <div className="field">
               <label>Win probability (%)</label>
               <input

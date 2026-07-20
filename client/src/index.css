@@ -143,15 +143,6 @@ tbody tr:nth-child(even) {
   border-radius: var(--radius);
 }
 
-.badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  color: white;
-}
-
 .modal-backdrop {
   position: fixed;
   inset: 0;
