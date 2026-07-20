@@ -100,6 +100,17 @@ const TimelineView = forwardRef<TimelineViewHandle, Props>(function TimelineView
     const groupsData = groupsDataSet.current;
 
     const timeline = new Timeline(containerRef.current, itemsDataSet.current, groupsData, {
+      // Without an explicit height, vis-timeline sizes itself to fit every
+      // row (auto-height) rather than filling its flex-constrained parent —
+      // that's what was pushing the whole page into scrolling as one unit,
+      // taking the toolbar/legend/time-axis with it. Filling the parent
+      // here instead makes vis-timeline manage its own internal vertical
+      // scrollbar for the row area, which is what keeps everything above it
+      // fixed in place.
+      height: '100%',
+      // Off by default — without it, rows taller than the fixed height
+      // above are simply clipped with no way to reach them at all.
+      verticalScroll: true,
       stack: true,
       horizontalScroll: true,
       zoomKey: 'ctrlKey',
@@ -221,7 +232,11 @@ const TimelineView = forwardRef<TimelineViewHandle, Props>(function TimelineView
     expandAllGroups: () => setAllNestingGroups(true),
   }), []);
 
-  return <div ref={containerRef} style={{ background: 'var(--panel)' }} />;
+  // vis-timeline's own root element is told height:100% (see the Timeline
+  // options above) so it fills this div rather than growing to fit every
+  // row — but a percentage height only resolves against a parent that
+  // itself has a definite height, so this div needs one explicitly too.
+  return <div ref={containerRef} style={{ background: 'var(--panel)', height: '100%' }} />;
 });
 
 export default TimelineView;
