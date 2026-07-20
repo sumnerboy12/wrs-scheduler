@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import type { Client } from '../types';
 import ClientModal from '../components/ClientModal';
+import { useAuth } from '../auth/AuthContext';
 
 export default function ClientsPage() {
+  const { isReadOnly } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Client | null>(null);
@@ -23,9 +25,11 @@ export default function ClientsPage() {
     <div style={{ padding: 20, maxWidth: 900, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h1 style={{ fontSize: 20, margin: 0 }}>Clients</h1>
-        <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
-          + Add Client
-        </button>
+        {!isReadOnly && (
+          <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
+            + Add Client
+          </button>
+        )}
       </div>
 
       <div className="card">
@@ -51,7 +55,7 @@ export default function ClientsPage() {
                   <td>{client.notes}</td>
                   <td>
                     <button className="btn" onClick={() => setEditing(client)}>
-                      Edit
+                      {isReadOnly ? 'View' : 'Edit'}
                     </button>
                   </td>
                 </tr>
@@ -90,6 +94,7 @@ export default function ClientsPage() {
             await api.deleteClient(id);
             load();
           }}
+          readOnly={isReadOnly}
         />
       )}
     </div>

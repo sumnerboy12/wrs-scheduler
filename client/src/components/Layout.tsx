@@ -49,7 +49,7 @@ export default function Layout() {
           <NavLink to="/employees" style={navStyle}>
             Employees
           </NavLink>
-          {user?.is_admin && (
+          {user?.role === 'admin' && (
             <NavLink to="/users" style={navStyle}>
               Users
             </NavLink>

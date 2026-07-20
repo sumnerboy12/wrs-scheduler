@@ -603,6 +603,15 @@ tbody tr:nth-child(even) {
   transform: scale(1.1);
 }
 
+.color-swatch:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.color-swatch:disabled:hover {
+  transform: none;
+}
+
 .color-swatch.selected {
   box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px white;
 }

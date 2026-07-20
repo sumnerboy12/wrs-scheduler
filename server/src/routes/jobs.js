@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from '../db/index.js';
+import { requireWrite } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -35,7 +36,7 @@ router.get('/:id', (req, res) => {
   res.json({ ...job, phases });
 });
 
-router.post('/', (req, res) => {
+router.post('/', requireWrite, (req, res) => {
   const { code, name, client_id, address, status, probability, notes } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'name is required' });
 
@@ -58,7 +59,7 @@ router.post('/', (req, res) => {
   res.status(201).json(row);
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', requireWrite, (req, res) => {
   const id = Number(req.params.id);
   const existing = db.prepare('SELECT * FROM jobs WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'not found' });
@@ -83,7 +84,7 @@ router.put('/:id', (req, res) => {
   res.json(row);
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', requireWrite, (req, res) => {
   const id = Number(req.params.id);
   db.prepare('DELETE FROM jobs WHERE id = ?').run(id);
   res.status(204).end();
@@ -97,7 +98,7 @@ router.get('/:jobId/phases', (req, res) => {
   res.json(rows);
 });
 
-router.post('/:jobId/phases', (req, res) => {
+router.post('/:jobId/phases', requireWrite, (req, res) => {
   const jobId = Number(req.params.jobId);
   const job = db.prepare('SELECT id FROM jobs WHERE id = ?').get(jobId);
   if (!job) return res.status(404).json({ error: 'job not found' });

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { api } from '../api/client';
-import type { ManagedUser } from '../types';
+import type { ManagedUser, UserRole } from '../types';
 import { useAuth } from '../auth/AuthContext';
 import UserModal from '../components/UserModal';
 import ResetPasswordModal from '../components/ResetPasswordModal';
@@ -24,7 +24,7 @@ export default function UsersPage() {
 
   useEffect(load, []);
 
-  if (!user?.is_admin) return <Navigate to="/" replace />;
+  if (user?.role !== 'admin') return <Navigate to="/" replace />;
 
   const toggleActive = async (u: ManagedUser) => {
     setError(null);
@@ -36,10 +36,10 @@ export default function UsersPage() {
     }
   };
 
-  const toggleAdmin = async (u: ManagedUser) => {
+  const changeRole = async (u: ManagedUser, role: UserRole) => {
     setError(null);
     try {
-      await api.updateUser(u.id, { is_admin: !u.is_admin });
+      await api.updateUser(u.id, { role });
       load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to update user');
@@ -76,7 +76,7 @@ export default function UsersPage() {
             <thead>
               <tr>
                 <th>Username</th>
-                <th>Admin</th>
+                <th>Role</th>
                 <th>Status</th>
                 <th>Password</th>
                 <th></th>
@@ -87,16 +87,16 @@ export default function UsersPage() {
                 <tr key={u.id} style={{ opacity: u.active ? 1 : 0.5 }}>
                   <td>{u.username}</td>
                   <td>
-                    <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
-                      <input
-                        type="checkbox"
-                        style={{ width: 'auto' }}
-                        checked={u.is_admin}
-                        onChange={() => toggleAdmin(u)}
-                        disabled={u.id === user.id}
-                      />
-                      Admin
-                    </label>
+                    <select
+                      value={u.role}
+                      onChange={(e) => changeRole(u, e.target.value as UserRole)}
+                      disabled={u.id === user.id}
+                      style={{ fontSize: 13 }}
+                    >
+                      <option value="admin">Admin</option>
+                      <option value="editor">Editor</option>
+                      <option value="readonly">Read only</option>
+                    </select>
                   </td>
                   <td>{u.active ? 'Active' : 'Inactive'}</td>
                   <td>{u.must_change_password ? 'Must change on next login' : 'Set'}</td>

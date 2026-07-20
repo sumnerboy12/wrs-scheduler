@@ -9,7 +9,7 @@ function publicUser(user) {
   return {
     id: user.id,
     username: user.username,
-    is_admin: !!user.is_admin,
+    role: user.role,
     must_change_password: !!user.must_change_password,
   };
 }

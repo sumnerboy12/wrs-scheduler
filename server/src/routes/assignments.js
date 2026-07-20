@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db/index.js';
 import { computeConflictIds } from '../lib/conflicts.js';
+import { requireWrite } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -16,7 +17,7 @@ router.get('/', (req, res) => {
   res.json(rows.map((r) => ({ ...r, conflict: conflictIds.has(r.id) })));
 });
 
-router.post('/', (req, res) => {
+router.post('/', requireWrite, (req, res) => {
   const { phase_id, employee_id, start_date, end_date, allocation_pct, notes } = req.body;
   if (!phase_id || !employee_id) return res.status(400).json({ error: 'phase_id and employee_id are required' });
   if (!start_date || !end_date) return res.status(400).json({ error: 'start_date and end_date are required' });
@@ -32,7 +33,7 @@ router.post('/', (req, res) => {
   res.status(201).json(row);
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', requireWrite, (req, res) => {
   const id = Number(req.params.id);
   const existing = db.prepare('SELECT * FROM assignments WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'not found' });
@@ -56,7 +57,7 @@ router.put('/:id', (req, res) => {
   res.json(row);
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', requireWrite, (req, res) => {
   const id = Number(req.params.id);
   db.prepare('DELETE FROM assignments WHERE id = ?').run(id);
   res.status(204).end();

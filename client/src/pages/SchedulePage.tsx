@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
+import { useAuth } from '../auth/AuthContext';
 import type { Assignment, Job, Phase, TimelinePayload } from '../types';
 import { JOB_STATUS_LABELS } from '../types';
 import TimelineView, { type TLGroup, type TLItem } from '../components/TimelineView';
@@ -54,6 +55,7 @@ function savePersistedView(state: PersistedView) {
 }
 
 export default function SchedulePage() {
+  const { isReadOnly } = useAuth();
   const [data, setData] = useState<TimelinePayload | null>(null);
   const [groupMode, setGroupMode] = useState<GroupMode>(() => loadPersistedView()?.groupMode ?? 'employee');
   const [preset, setPreset] = useState<ZoomPreset>(() => loadPersistedView()?.preset ?? 'month');
@@ -310,6 +312,7 @@ export default function SchedulePage() {
   };
 
   const handleEmptyDoubleClick = (groupId: string, time: Date) => {
+    if (isReadOnly) return;
     const date = toISODate(time);
     if (groupId.startsWith('emp-')) {
       setCreating({ employeeId: Number(groupId.replace('emp-', '')), date });
@@ -430,9 +433,11 @@ export default function SchedulePage() {
           Show completed / lost jobs
         </label>
 
-        <button className="btn btn-primary" style={{ marginLeft: 'auto' }} onClick={() => setCreating({})}>
-          + Add Assignment
-        </button>
+        {!isReadOnly && (
+          <button className="btn btn-primary" style={{ marginLeft: 'auto' }} onClick={() => setCreating({})}>
+            + Add Assignment
+          </button>
+        )}
       </div>
 
       <div style={{ padding: '8px 20px', borderBottom: '1px solid var(--border)' }} className="legend">
@@ -471,6 +476,7 @@ export default function SchedulePage() {
           onEmptyDoubleClick={handleEmptyDoubleClick}
           onLabelDoubleClick={handleLabelDoubleClick}
           onItemMoved={handleItemMoved}
+          readOnly={isReadOnly}
         />
       </div>
 
@@ -489,6 +495,7 @@ export default function SchedulePage() {
             await api.deleteAssignment(id);
             load();
           }}
+          readOnly={isReadOnly}
         />
       )}
       {creating && (
@@ -522,6 +529,7 @@ export default function SchedulePage() {
             setEditingJob(null);
             load();
           }}
+          readOnly={isReadOnly}
         />
       )}
       {editingPhase && (
@@ -538,6 +546,7 @@ export default function SchedulePage() {
             setEditingPhase(null);
             load();
           }}
+          readOnly={isReadOnly}
         />
       )}
     </div>

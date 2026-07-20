@@ -56,6 +56,7 @@ interface Props {
   onEmptyDoubleClick: (groupId: string, time: Date) => void;
   onLabelDoubleClick: (groupId: string) => void;
   onItemMoved: (itemId: number | string, start: Date, end: Date, groupId: string) => void;
+  readOnly?: boolean;
 }
 
 export default function TimelineView({
@@ -67,6 +68,7 @@ export default function TimelineView({
   onEmptyDoubleClick,
   onLabelDoubleClick,
   onItemMoved,
+  readOnly,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<Timeline | null>(null);
@@ -98,8 +100,8 @@ export default function TimelineView({
       ...(windowRange ? { start: windowRange.start, end: windowRange.end } : {}),
       editable: {
         add: false,
-        updateTime: true,
-        updateGroup: true,
+        updateTime: !readOnly,
+        updateGroup: !readOnly,
         remove: false,
       },
       // vis-timeline runs all item/group `content` HTML through an XSS

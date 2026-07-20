@@ -14,6 +14,7 @@ interface Props {
   onClose: () => void;
   onSave: (data: Partial<Assignment>) => Promise<void>;
   onDelete?: (id: number) => Promise<void>;
+  readOnly?: boolean;
 }
 
 export default function AssignmentModal({
@@ -28,6 +29,7 @@ export default function AssignmentModal({
   onClose,
   onSave,
   onDelete,
+  readOnly,
 }: Props) {
   const editingPhase = assignment ? phases.find((p) => p.id === assignment.phase_id) : null;
 
@@ -93,12 +95,12 @@ export default function AssignmentModal({
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2>{assignment ? 'Edit Assignment' : 'New Assignment'}</h2>
+        <h2>{assignment ? (readOnly ? 'View Assignment' : 'Edit Assignment') : 'New Assignment'}</h2>
 
         {assignment ? (
           <div className="field">
             <label>Employee</label>
-            <select value={employeeIds[0] ?? ''} onChange={(e) => setEmployeeIds([Number(e.target.value)])}>
+            <select value={employeeIds[0] ?? ''} onChange={(e) => setEmployeeIds([Number(e.target.value)])} disabled={readOnly}>
               <option value="" disabled>
                 Select employee…
               </option>
@@ -132,6 +134,7 @@ export default function AssignmentModal({
                     style={{ width: 'auto' }}
                     checked={employeeIds.includes(e.id)}
                     onChange={(ev) => toggleEmployee(e.id, ev.target.checked)}
+                    disabled={readOnly}
                   />
                   {e.name}
                   {e.role ? ` (${e.role})` : ''}
@@ -146,7 +149,7 @@ export default function AssignmentModal({
 
         <div className="field">
           <label>Job</label>
-          <select value={jobId} onChange={(e) => handleJobChange(Number(e.target.value))}>
+          <select value={jobId} onChange={(e) => handleJobChange(Number(e.target.value))} disabled={readOnly}>
             <option value="" disabled>
               Select job…
             </option>
@@ -160,7 +163,7 @@ export default function AssignmentModal({
 
         <div className="field">
           <label>Phase</label>
-          <select value={phaseId} onChange={(e) => setPhaseId(Number(e.target.value))} disabled={!jobId}>
+          <select value={phaseId} onChange={(e) => setPhaseId(Number(e.target.value))} disabled={!jobId || readOnly}>
             <option value="" disabled>
               {jobId ? 'Select phase…' : 'Select a job first'}
             </option>
@@ -180,11 +183,11 @@ export default function AssignmentModal({
         <div className="row">
           <div className="field">
             <label>Start date</label>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} disabled={readOnly} />
           </div>
           <div className="field">
             <label>End date</label>
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} disabled={readOnly} />
           </div>
         </div>
 
@@ -196,19 +199,20 @@ export default function AssignmentModal({
             max={100}
             value={allocationPct}
             onChange={(e) => setAllocationPct(Number(e.target.value))}
+            disabled={readOnly}
           />
         </div>
 
         <div className="field">
           <label>Notes</label>
-          <textarea rows={2} value={notes ?? ''} onChange={(e) => setNotes(e.target.value)} />
+          <textarea rows={2} value={notes ?? ''} onChange={(e) => setNotes(e.target.value)} disabled={readOnly} />
         </div>
 
         {error && <div style={{ color: 'var(--danger)', marginBottom: 12 }}>{error}</div>}
 
         <div className="modal-actions">
           <div>
-            {assignment && onDelete && (
+            {!readOnly && assignment && onDelete && (
               <button
                 className="btn btn-danger"
                 onClick={async () => {
@@ -224,11 +228,13 @@ export default function AssignmentModal({
           </div>
           <div className="right">
             <button className="btn" onClick={onClose}>
-              Cancel
+              {readOnly ? 'Close' : 'Cancel'}
             </button>
-            <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving…' : 'Save'}
-            </button>
+            {!readOnly && (
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            )}
           </div>
         </div>
       </div>

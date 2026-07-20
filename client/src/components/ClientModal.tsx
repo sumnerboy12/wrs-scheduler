@@ -8,9 +8,10 @@ interface Props {
   onClose: () => void;
   onSave: (data: Partial<Client>) => Promise<void>;
   onDelete?: (id: number) => Promise<void>;
+  readOnly?: boolean;
 }
 
-export default function ClientModal({ client, onClose, onSave, onDelete }: Props) {
+export default function ClientModal({ client, onClose, onSave, onDelete, readOnly }: Props) {
   const [name, setName] = useState(client?.name ?? '');
   const [color, setColor] = useState(client?.color ?? SWATCH_COLORS[5]);
   const [notes, setNotes] = useState(client?.notes ?? '');
@@ -37,28 +38,28 @@ export default function ClientModal({ client, onClose, onSave, onDelete }: Props
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2>{client ? 'Edit Client' : 'New Client'}</h2>
+        <h2>{client ? (readOnly ? 'View Client' : 'Edit Client') : 'New Client'}</h2>
 
         <div className="row">
           <div className="field">
             <label>Name</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+            <input value={name} onChange={(e) => setName(e.target.value)} autoFocus disabled={readOnly} />
           </div>
           <div className="field">
             <label>Colour</label>
-            <ColorSwatchPicker value={color} onChange={setColor} />
+            <ColorSwatchPicker value={color} onChange={setColor} disabled={readOnly} />
           </div>
         </div>
         <div className="field">
           <label>Notes</label>
-          <textarea rows={3} value={notes ?? ''} onChange={(e) => setNotes(e.target.value)} />
+          <textarea rows={3} value={notes ?? ''} onChange={(e) => setNotes(e.target.value)} disabled={readOnly} />
         </div>
 
         {error && <div style={{ color: 'var(--danger)', marginBottom: 12 }}>{error}</div>}
 
         <div className="modal-actions">
           <div>
-            {client && onDelete && (
+            {!readOnly && client && onDelete && (
               <button
                 className="btn btn-danger"
                 onClick={async () => {
@@ -74,11 +75,13 @@ export default function ClientModal({ client, onClose, onSave, onDelete }: Props
           </div>
           <div className="right">
             <button className="btn" onClick={onClose}>
-              Cancel
+              {readOnly ? 'Close' : 'Cancel'}
             </button>
-            <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving…' : 'Save'}
-            </button>
+            {!readOnly && (
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -3,9 +3,10 @@ import { SWATCH_COLORS } from '../lib/colors';
 interface Props {
   value: string;
   onChange: (color: string) => void;
+  disabled?: boolean;
 }
 
-export default function ColorSwatchPicker({ value, onChange }: Props) {
+export default function ColorSwatchPicker({ value, onChange, disabled }: Props) {
   return (
     <div className="color-swatch-grid">
       {SWATCH_COLORS.map((color) => (
@@ -17,6 +18,7 @@ export default function ColorSwatchPicker({ value, onChange }: Props) {
           aria-label={color}
           aria-pressed={color.toLowerCase() === value.toLowerCase()}
           onClick={() => onChange(color)}
+          disabled={disabled}
         />
       ))}
     </div>

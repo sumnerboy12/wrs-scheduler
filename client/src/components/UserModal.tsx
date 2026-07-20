@@ -1,14 +1,15 @@
 import { useState } from 'react';
+import type { UserRole } from '../types';
 
 interface Props {
   onClose: () => void;
-  onSave: (data: { username: string; password: string; is_admin: boolean }) => Promise<void>;
+  onSave: (data: { username: string; password: string; role: UserRole }) => Promise<void>;
 }
 
 export default function UserModal({ onClose, onSave }: Props) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [role, setRole] = useState<UserRole>('editor');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,7 +19,7 @@ export default function UserModal({ onClose, onSave }: Props) {
     setSaving(true);
     setError(null);
     try {
-      await onSave({ username: username.trim(), password, is_admin: isAdmin });
+      await onSave({ username: username.trim(), password, role });
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create user');
@@ -40,10 +41,14 @@ export default function UserModal({ onClose, onSave }: Props) {
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
           <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>They'll be asked to set their own password on first login.</div>
         </div>
-        <label style={{ fontSize: 13, display: 'flex', gap: 6, alignItems: 'center', marginBottom: 12 }}>
-          <input type="checkbox" style={{ width: 'auto' }} checked={isAdmin} onChange={(e) => setIsAdmin(e.target.checked)} />
-          Admin (can manage users)
-        </label>
+        <div className="field" style={{ marginBottom: 12 }}>
+          <label>Role</label>
+          <select value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
+            <option value="admin">Admin — can manage users</option>
+            <option value="editor">Editor — can edit the schedule and jobs</option>
+            <option value="readonly">Read only — can view only</option>
+          </select>
+        </div>
 
         {error && <div style={{ color: 'var(--danger)', marginBottom: 12 }}>{error}</div>}
 

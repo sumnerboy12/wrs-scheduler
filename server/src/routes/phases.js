@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import db from '../db/index.js';
+import { requireWrite } from '../middleware/auth.js';
 
 const router = Router();
 
-router.put('/:id', (req, res) => {
+router.put('/:id', requireWrite, (req, res) => {
   const id = Number(req.params.id);
   const existing = db.prepare('SELECT * FROM phases WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'not found' });
@@ -27,7 +28,7 @@ router.put('/:id', (req, res) => {
   res.json(row);
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', requireWrite, (req, res) => {
   const id = Number(req.params.id);
   db.prepare('DELETE FROM phases WHERE id = ?').run(id);
   res.status(204).end();

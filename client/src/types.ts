@@ -75,17 +75,19 @@ export interface TimelinePayload {
   clients: Client[];
 }
 
+export type UserRole = 'admin' | 'editor' | 'readonly';
+
 export interface AuthUser {
   id: number;
   username: string;
-  is_admin: boolean;
+  role: UserRole;
   must_change_password: boolean;
 }
 
 export interface ManagedUser {
   id: number;
   username: string;
-  is_admin: boolean;
+  role: UserRole;
   active: boolean;
   must_change_password: boolean;
   created_at: string;

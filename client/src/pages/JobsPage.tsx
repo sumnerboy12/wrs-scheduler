@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
+import { useAuth } from '../auth/AuthContext';
 import type { Client, Job, JobWithPhases, Phase } from '../types';
 import { JOB_STATUS_LABELS } from '../types';
 import JobModal from '../components/JobModal';
@@ -20,6 +21,7 @@ const JOB_IMPORT_FIELDS: ImportField[] = [
 ];
 
 export default function JobsPage() {
+  const { isReadOnly } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -102,18 +104,22 @@ export default function JobsPage() {
               </option>
             ))}
           </select>
-          <button
-            className="btn"
-            onClick={() => {
-              importClientCache.current = null;
-              setShowImportJobs(true);
-            }}
-          >
-            Import
-          </button>
-          <button className="btn btn-primary" onClick={() => setShowAddJob(true)}>
-            + Job
-          </button>
+          {!isReadOnly && (
+            <>
+              <button
+                className="btn"
+                onClick={() => {
+                  importClientCache.current = null;
+                  setShowImportJobs(true);
+                }}
+              >
+                Import
+              </button>
+              <button className="btn btn-primary" onClick={() => setShowAddJob(true)}>
+                + Job
+              </button>
+            </>
+          )}
           </div>
         </div>
         <div style={{ overflowY: 'auto', flex: 1 }}>
@@ -185,7 +191,7 @@ export default function JobsPage() {
                 </span>
               </div>
               <button className="btn" onClick={() => setEditingJob(detail)}>
-                Edit Job
+                {isReadOnly ? 'View Job' : 'Edit Job'}
               </button>
             </div>
 
@@ -195,9 +201,11 @@ export default function JobsPage() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 28 }}>
               <h2 style={{ fontSize: 16, margin: 0 }}>Phases</h2>
-              <button className="btn btn-primary" onClick={() => setShowAddPhase(true)}>
-                + Add Phase
-              </button>
+              {!isReadOnly && (
+                <button className="btn btn-primary" onClick={() => setShowAddPhase(true)}>
+                  + Add Phase
+                </button>
+              )}
             </div>
 
             <div className="card" style={{ marginTop: 12 }}>
@@ -220,7 +228,7 @@ export default function JobsPage() {
                       <td>{formatShortDate(phase.end_date)}</td>
                       <td>
                         <button className="btn" onClick={() => setEditingPhase(phase)}>
-                          Edit
+                          {isReadOnly ? 'View' : 'Edit'}
                         </button>
                       </td>
                     </tr>
@@ -268,6 +276,7 @@ export default function JobsPage() {
             if (selectedId === id) setSelectedId(null);
             await loadJobs();
           }}
+          readOnly={isReadOnly}
         />
       )}
       {showImportJobs && (
@@ -319,6 +328,7 @@ export default function JobsPage() {
             await api.deletePhase(id);
             loadDetail(detail.id);
           }}
+          readOnly={isReadOnly}
         />
       )}
     </div>

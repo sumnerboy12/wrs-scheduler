@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import type { Employee } from '../types';
 import EmployeeModal from '../components/EmployeeModal';
 import ImportModal, { type ImportField } from '../components/ImportModal';
+import { useAuth } from '../auth/AuthContext';
 
 const EMPLOYEE_IMPORT_FIELDS: ImportField[] = [
   { key: 'name', label: 'Name', required: true, aliases: ['name', 'employee', 'employee name', 'full name', 'staff name'] },
@@ -12,6 +13,7 @@ const EMPLOYEE_IMPORT_FIELDS: ImportField[] = [
 ];
 
 export default function EmployeesPage() {
+  const { isReadOnly } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Employee | null>(null);
@@ -40,12 +42,16 @@ export default function EmployeesPage() {
             <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} style={{ width: 'auto' }} />
             Show inactive
           </label>
-          <button className="btn" onClick={() => setShowImport(true)}>
-            Import
-          </button>
-          <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
-            + Add Employee
-          </button>
+          {!isReadOnly && (
+            <>
+              <button className="btn" onClick={() => setShowImport(true)}>
+                Import
+              </button>
+              <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
+                + Add Employee
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -78,7 +84,7 @@ export default function EmployeesPage() {
                   <td>{emp.active ? 'Active' : 'Inactive'}</td>
                   <td>
                     <button className="btn" onClick={() => setEditing(emp)}>
-                      Edit
+                      {isReadOnly ? 'View' : 'Edit'}
                     </button>
                   </td>
                 </tr>
@@ -117,6 +123,7 @@ export default function EmployeesPage() {
             await api.deleteEmployee(id);
             load();
           }}
+          readOnly={isReadOnly}
         />
       )}
       {showImport && (

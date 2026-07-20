@@ -6,7 +6,7 @@ const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
 if (userCount === 0) {
   const tempPassword = crypto.randomBytes(9).toString('base64url');
   db.prepare(
-    `INSERT INTO users (username, password_hash, is_admin, must_change_password) VALUES (?, ?, 1, 1)`
+    `INSERT INTO users (username, password_hash, role, must_change_password) VALUES (?, ?, 'admin', 1)`
   ).run('admin', hashPassword(tempPassword));
 
   console.log('='.repeat(60));

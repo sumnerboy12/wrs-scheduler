@@ -1,4 +1,4 @@
-import type { Assignment, AuthUser, Client, Employee, Job, JobWithPhases, ManagedUser, Phase, TimelinePayload } from '../types';
+import type { Assignment, AuthUser, Client, Employee, Job, JobWithPhases, ManagedUser, Phase, TimelinePayload, UserRole } from '../types';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -26,9 +26,9 @@ export const api = {
     request<void>('/auth/change-password', { method: 'POST', body: JSON.stringify({ current_password, new_password }) }),
 
   getUsers: () => request<ManagedUser[]>('/users'),
-  createUser: (data: { username: string; password: string; is_admin: boolean }) =>
+  createUser: (data: { username: string; password: string; role: UserRole }) =>
     request<ManagedUser>('/users', { method: 'POST', body: JSON.stringify(data) }),
-  updateUser: (id: number, data: Partial<{ is_admin: boolean; active: boolean }>) =>
+  updateUser: (id: number, data: Partial<{ role: UserRole; active: boolean }>) =>
     request<ManagedUser>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   resetUserPassword: (id: number, password: string) =>
     request<void>(`/users/${id}/reset-password`, { method: 'POST', body: JSON.stringify({ password }) }),

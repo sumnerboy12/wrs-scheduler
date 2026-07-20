@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from '../db/index.js';
+import { requireWrite } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -8,7 +9,7 @@ router.get('/', (req, res) => {
   res.json(rows);
 });
 
-router.post('/', (req, res) => {
+router.post('/', requireWrite, (req, res) => {
   const { name, color, notes } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'name is required' });
 
@@ -20,7 +21,7 @@ router.post('/', (req, res) => {
   res.status(201).json(row);
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', requireWrite, (req, res) => {
   const id = Number(req.params.id);
   const existing = db.prepare('SELECT * FROM clients WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'not found' });
@@ -34,7 +35,7 @@ router.put('/:id', (req, res) => {
   res.json(row);
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', requireWrite, (req, res) => {
   const id = Number(req.params.id);
   // Jobs linked to this client are unlinked (client_id -> NULL) rather than
   // deleted, via the column's ON DELETE SET NULL — a client going away

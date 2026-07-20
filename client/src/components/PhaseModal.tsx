@@ -7,9 +7,10 @@ interface Props {
   onClose: () => void;
   onSave: (data: Partial<Phase>) => Promise<void>;
   onDelete?: (id: number) => Promise<void>;
+  readOnly?: boolean;
 }
 
-export default function PhaseModal({ phase, defaultSequence, onClose, onSave, onDelete }: Props) {
+export default function PhaseModal({ phase, defaultSequence, onClose, onSave, onDelete, readOnly }: Props) {
   const [name, setName] = useState(phase?.name ?? '');
   const [sequence, setSequence] = useState(phase?.sequence ?? defaultSequence);
   const [startDate, setStartDate] = useState(phase?.start_date ?? '');
@@ -46,26 +47,32 @@ export default function PhaseModal({ phase, defaultSequence, onClose, onSave, on
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2>{phase ? 'Edit Phase' : 'Add Phase'}</h2>
+        <h2>{phase ? (readOnly ? 'View Phase' : 'Edit Phase') : 'Add Phase'}</h2>
 
         <div className="field">
           <label>Phase name</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} autoFocus placeholder="e.g. Tear-off & Dry-in" />
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus
+            placeholder="e.g. Tear-off & Dry-in"
+            disabled={readOnly}
+          />
         </div>
         <div className="row">
           <div className="field">
             <label>Start date</label>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} disabled={readOnly} />
           </div>
           <div className="field">
             <label>End date</label>
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} disabled={readOnly} />
           </div>
         </div>
         <div className="row">
           <div className="field">
             <label>Order (sequence)</label>
-            <input type="number" value={sequence} onChange={(e) => setSequence(Number(e.target.value))} />
+            <input type="number" value={sequence} onChange={(e) => setSequence(Number(e.target.value))} disabled={readOnly} />
           </div>
           <div className="field">
             <label>Estimated staff (optional)</label>
@@ -75,19 +82,20 @@ export default function PhaseModal({ phase, defaultSequence, onClose, onSave, on
               placeholder="e.g. 3"
               value={estimatedStaff}
               onChange={(e) => setEstimatedStaff(e.target.value)}
+              disabled={readOnly}
             />
           </div>
         </div>
         <div className="field">
           <label>Notes</label>
-          <textarea rows={2} value={notes ?? ''} onChange={(e) => setNotes(e.target.value)} />
+          <textarea rows={2} value={notes ?? ''} onChange={(e) => setNotes(e.target.value)} disabled={readOnly} />
         </div>
 
         {error && <div style={{ color: 'var(--danger)', marginBottom: 12 }}>{error}</div>}
 
         <div className="modal-actions">
           <div>
-            {phase && onDelete && (
+            {!readOnly && phase && onDelete && (
               <button
                 className="btn btn-danger"
                 onClick={async () => {
@@ -103,11 +111,13 @@ export default function PhaseModal({ phase, defaultSequence, onClose, onSave, on
           </div>
           <div className="right">
             <button className="btn" onClick={onClose}>
-              Cancel
+              {readOnly ? 'Close' : 'Cancel'}
             </button>
-            <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving…' : 'Save'}
-            </button>
+            {!readOnly && (
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            )}
           </div>
         </div>
       </div>

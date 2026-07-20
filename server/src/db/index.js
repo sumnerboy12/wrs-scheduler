@@ -60,5 +60,17 @@ if (jobColumns.includes('color')) {
 // client_id wouldn't exist as a column yet at that point.
 db.exec('CREATE INDEX IF NOT EXISTS idx_jobs_client ON jobs(client_id)');
 
+// is_admin (binary) replaced by a role enum so a "readonly" tier can exist
+// alongside admin/editor. Existing admins are carried over before the old
+// column is dropped.
+const userColumns = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
+if (!userColumns.includes('role')) {
+  db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'editor'");
+  db.exec("UPDATE users SET role = 'admin' WHERE is_admin = 1");
+}
+if (userColumns.includes('is_admin')) {
+  db.exec('ALTER TABLE users DROP COLUMN is_admin');
+}
+
 export { dataDir };
 export default db;

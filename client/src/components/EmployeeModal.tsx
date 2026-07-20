@@ -8,9 +8,10 @@ interface Props {
   onClose: () => void;
   onSave: (data: Partial<Employee>) => Promise<void>;
   onDelete?: (id: number) => Promise<void>;
+  readOnly?: boolean;
 }
 
-export default function EmployeeModal({ employee, onClose, onSave, onDelete }: Props) {
+export default function EmployeeModal({ employee, onClose, onSave, onDelete, readOnly }: Props) {
   const [name, setName] = useState(employee?.name ?? '');
   const [role, setRole] = useState(employee?.role ?? '');
   const [email, setEmail] = useState(employee?.email ?? '');
@@ -40,36 +41,42 @@ export default function EmployeeModal({ employee, onClose, onSave, onDelete }: P
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2>{employee ? 'Edit Employee' : 'Add Employee'}</h2>
+        <h2>{employee ? (readOnly ? 'View Employee' : 'Edit Employee') : 'Add Employee'}</h2>
 
         <div className="field">
           <label>Name</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+          <input value={name} onChange={(e) => setName(e.target.value)} autoFocus disabled={readOnly} />
         </div>
         <div className="row">
           <div className="field">
             <label>Role</label>
-            <input value={role ?? ''} onChange={(e) => setRole(e.target.value)} placeholder="e.g. Foreman" />
+            <input value={role ?? ''} onChange={(e) => setRole(e.target.value)} placeholder="e.g. Foreman" disabled={readOnly} />
           </div>
           <div className="field">
             <label>Colour</label>
-            <ColorSwatchPicker value={color} onChange={setColor} />
+            <ColorSwatchPicker value={color} onChange={setColor} disabled={readOnly} />
           </div>
         </div>
         <div className="row">
           <div className="field">
             <label>Email</label>
-            <input value={email ?? ''} onChange={(e) => setEmail(e.target.value)} />
+            <input value={email ?? ''} onChange={(e) => setEmail(e.target.value)} disabled={readOnly} />
           </div>
           <div className="field">
             <label>Phone</label>
-            <input value={phone ?? ''} onChange={(e) => setPhone(e.target.value)} />
+            <input value={phone ?? ''} onChange={(e) => setPhone(e.target.value)} disabled={readOnly} />
           </div>
         </div>
         {employee && (
           <div className="field">
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, flexDirection: 'row' }}>
-              <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} style={{ width: 'auto' }} />
+              <input
+                type="checkbox"
+                checked={active}
+                onChange={(e) => setActive(e.target.checked)}
+                style={{ width: 'auto' }}
+                disabled={readOnly}
+              />
               Active
             </label>
           </div>
@@ -79,7 +86,7 @@ export default function EmployeeModal({ employee, onClose, onSave, onDelete }: P
 
         <div className="modal-actions">
           <div>
-            {employee && onDelete && (
+            {!readOnly && employee && onDelete && (
               <button
                 className="btn btn-danger"
                 onClick={async () => {
@@ -95,11 +102,13 @@ export default function EmployeeModal({ employee, onClose, onSave, onDelete }: P
           </div>
           <div className="right">
             <button className="btn" onClick={onClose}>
-              Cancel
+              {readOnly ? 'Close' : 'Cancel'}
             </button>
-            <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving…' : 'Save'}
-            </button>
+            {!readOnly && (
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            )}
           </div>
         </div>
       </div>
