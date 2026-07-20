@@ -108,6 +108,17 @@ tbody tr:nth-child(even) {
   border-color: var(--danger);
 }
 
+.toolbar-compact .btn {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.toolbar-compact input,
+.toolbar-compact select {
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
 .toolbar-group {
   display: flex;
   gap: 2px;

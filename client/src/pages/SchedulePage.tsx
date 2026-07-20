@@ -175,8 +175,9 @@ export default function SchedulePage() {
       const jobContent = compact
         ? `${jobSwatch}${jobCodePrefix}<strong style="font-size:13px;">${escapeHtml(job.name)}</strong>`
         : (() => {
-            const jobStatusPill = `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.02em;background:${jobColor};color:#fff;">${JOB_STATUS_LABELS[job.status]}</span>`;
-            const jobMetaLine = `${jobStatusPill} · ${client ? escapeHtml(client.name) : 'No client set'}`;
+            const clientPill = `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.02em;background:${jobColor};color:#fff;">${client ? escapeHtml(client.name) : 'No client set'}</span>`;
+            const showProbability = (job.status === 'pipeline' || job.status === 'quoted') && job.probability != null;
+            const jobMetaLine = `${clientPill} · ${JOB_STATUS_LABELS[job.status]}${showProbability ? ` · ${job.probability}%` : ''}`;
             return `${jobSwatch}${jobCodePrefix}<strong style="font-size:14px;">${escapeHtml(job.name)}</strong><div style="font-size:12px;color:var(--text-dim);margin-top:4px;">${jobMetaLine}</div>`;
           })();
 
@@ -353,11 +354,12 @@ export default function SchedulePage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div
+        className="toolbar-compact"
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 16,
-          padding: '10px 20px',
+          padding: '6px 20px',
           borderBottom: '1px solid var(--border)',
           flexWrap: 'wrap',
         }}

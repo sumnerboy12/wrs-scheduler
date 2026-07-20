@@ -150,11 +150,16 @@ export default function JobsPage() {
                       color: '#fff',
                     }}
                   >
-                    {JOB_STATUS_LABELS[job.status]}
+                    {client?.name ?? 'No client set'}
                   </span>
                   <span>&middot;</span>
-                  <span>{client?.name ?? 'No client set'}</span>
-                  {job.status === 'pipeline' && job.probability != null && <span>{job.probability}%</span>}
+                  <span>{JOB_STATUS_LABELS[job.status]}</span>
+                  {(job.status === 'pipeline' || job.status === 'quoted') && job.probability != null && (
+                    <>
+                      <span>&middot;</span>
+                      <span>{job.probability}%</span>
+                    </>
+                  )}
                 </div>
               </div>
             );
