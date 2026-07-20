@@ -529,7 +529,7 @@ tbody tr:nth-child(even) {
   background-color: color-mix(in srgb, var(--job-color, var(--accent)) 30%, var(--panel));
   border-width: 1px;
   border-radius: 7px;
-  font-weight: 700;
+  font-weight: 400;
   font-size: 12px;
   color: var(--text);
 }
@@ -544,11 +544,18 @@ tbody tr:nth-child(even) {
   padding: 5px 8px;
 }
 
-/* Individual staff bars nested under a job's phases — lighter and more
-   rounded than the job-summary rollup so the two read as different tiers,
-   but still tinted with the job's color like everything else in the row. */
+/* Pipeline/quoted keeps its tinted fill and dashed border (from .tentative)
+   here — just without the diagonal stripes, same reasoning as staff-bar
+   below: the dashed outline alone already reads as "not confirmed yet". */
+.vis-item.tl-item.job-summary.tentative {
+  background-image: none;
+}
+
+/* Individual staff bars nested under a job's phases — outline-only (no
+   fill), so they read as a lighter tier than the filled job-summary
+   rollup, while still carrying the same colour via their border alone. */
 .vis-item.tl-item.staff-bar {
-  background-color: color-mix(in srgb, var(--job-color, var(--accent)) 16%, var(--panel));
+  background-color: transparent;
   border-width: 1px;
   border-radius: 6px;
   color: var(--text);
@@ -558,13 +565,25 @@ tbody tr:nth-child(even) {
   color: var(--text);
 }
 
-/* Pipeline/quoted phase headcount estimate — no real employee is assigned
-   yet, so it's a dashed, unfilled placeholder rather than a solid bar,
-   to avoid reading as an actual commitment. */
+/* On a pipeline/quoted job, the diagonal-stripe .tentative treatment above
+   is meant to read as "not real work yet" — but a staff bar already has no
+   fill (see .staff-bar above), so the stripes were just painting solid
+   colour into what's supposed to be an empty outline. The dashed border
+   alone (still inherited from .tentative) carries that meaning here. */
+.vis-item.tl-item.staff-bar.tentative {
+  background-image: none;
+}
+
+/* Phase headcount estimate — no real employee is assigned yet, so it's an
+   unfilled placeholder rather than a solid bar, to avoid reading as an
+   actual commitment. Dotted rather than dashed — dashed now specifically
+   means "this job is pipeline/quoted" (see .tentative), and an estimate
+   can just as easily sit on a confirmed job still firming up headcount,
+   so the two need visually distinct borders rather than sharing one. */
 .vis-item.tl-item.estimate-bar {
   background-color: transparent;
   border-width: 1px;
-  border-style: dashed;
+  border-style: dotted;
   border-color: var(--job-color, var(--accent));
   border-radius: 6px;
   color: var(--text-dim);

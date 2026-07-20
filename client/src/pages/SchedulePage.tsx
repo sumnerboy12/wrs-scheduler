@@ -464,10 +464,7 @@ export default function SchedulePage() {
 
       <div style={{ padding: '8px 20px', borderBottom: '1px solid var(--border)' }} className="legend">
         <span>
-          <span
-            className="legend-swatch"
-            style={{ background: 'repeating-linear-gradient(45deg, #6b7690, #6b7690 3px, transparent 3px, transparent 6px)', border: '1px dashed #6b7690' }}
-          />
+          <span className="legend-swatch" style={{ background: 'transparent', border: '1px dashed #6b7690' }} />
           Pipeline / Quoted
         </span>
         <span>
