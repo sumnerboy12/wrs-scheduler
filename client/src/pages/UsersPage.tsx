@@ -11,8 +11,8 @@ export default function UsersPage() {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+  const [editing, setEditing] = useState<ManagedUser | null>(null);
   const [resetting, setResetting] = useState<ManagedUser | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -26,37 +26,6 @@ export default function UsersPage() {
 
   if (user?.role !== 'admin') return <Navigate to="/" replace />;
 
-  const toggleActive = async (u: ManagedUser) => {
-    setError(null);
-    try {
-      await api.updateUser(u.id, { active: !u.active });
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update user');
-    }
-  };
-
-  const changeRole = async (u: ManagedUser, role: UserRole) => {
-    setError(null);
-    try {
-      await api.updateUser(u.id, { role });
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update user');
-    }
-  };
-
-  const remove = async (u: ManagedUser) => {
-    if (!confirm(`Remove login access for "${u.username}"?`)) return;
-    setError(null);
-    try {
-      await api.deleteUser(u.id);
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to remove user');
-    }
-  };
-
   return (
     <div style={{ padding: 20, maxWidth: 900, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -65,8 +34,6 @@ export default function UsersPage() {
           + Add User
         </button>
       </div>
-
-      {error && <div style={{ color: 'var(--danger)', marginBottom: 12 }}>{error}</div>}
 
       <div className="card">
         {loading ? (
@@ -86,29 +53,15 @@ export default function UsersPage() {
               {users.map((u) => (
                 <tr key={u.id} style={{ opacity: u.active ? 1 : 0.5 }}>
                   <td>{u.username}</td>
-                  <td>
-                    <select
-                      value={u.role}
-                      onChange={(e) => changeRole(u, e.target.value as UserRole)}
-                      disabled={u.id === user.id}
-                      style={{ fontSize: 13 }}
-                    >
-                      <option value="admin">Admin</option>
-                      <option value="editor">Editor</option>
-                      <option value="readonly">Read only</option>
-                    </select>
-                  </td>
+                  <td style={{ textTransform: 'capitalize' }}>{u.role}</td>
                   <td>{u.active ? 'Active' : 'Inactive'}</td>
                   <td>{u.must_change_password ? 'Must change on next login' : 'Set'}</td>
                   <td style={{ display: 'flex', gap: 8 }}>
                     <button className="btn" onClick={() => setResetting(u)}>
                       Reset password
                     </button>
-                    <button className="btn" onClick={() => toggleActive(u)} disabled={u.id === user.id}>
-                      {u.active ? 'Deactivate' : 'Activate'}
-                    </button>
-                    <button className="btn btn-danger" onClick={() => remove(u)} disabled={u.id === user.id}>
-                      Remove
+                    <button className="btn" onClick={() => setEditing(u)}>
+                      Edit
                     </button>
                   </td>
                 </tr>
@@ -127,9 +80,26 @@ export default function UsersPage() {
 
       {showAdd && (
         <UserModal
+          user={null}
+          currentUserId={user.id}
           onClose={() => setShowAdd(false)}
           onSave={async (data) => {
-            await api.createUser(data);
+            await api.createUser(data as { username: string; password: string; role: UserRole });
+            load();
+          }}
+        />
+      )}
+      {editing && (
+        <UserModal
+          user={editing}
+          currentUserId={user.id}
+          onClose={() => setEditing(null)}
+          onSave={async (data) => {
+            await api.updateUser(editing.id, data as Partial<{ role: UserRole; active: boolean }>);
+            load();
+          }}
+          onDelete={async (id) => {
+            await api.deleteUser(id);
             load();
           }}
         />
