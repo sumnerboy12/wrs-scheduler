@@ -133,7 +133,7 @@ export default function JobsPage() {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ width: 10, height: 10, borderRadius: '50%', background: jobColor, flexShrink: 0 }} />
-                  <strong style={{ fontSize: 14 }}>{job.name}</strong>
+                  <span style={{ fontSize: 14 }}>{job.name}</span>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <span

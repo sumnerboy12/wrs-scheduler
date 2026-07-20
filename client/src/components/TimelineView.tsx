@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { Timeline } from 'vis-timeline/standalone';
 import { DataSet } from 'vis-data/standalone';
 import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
@@ -10,6 +10,16 @@ export interface TLGroup {
   style?: string;
   nestedGroups?: string[];
   subgroupStack?: boolean;
+  // Only meaningful on a group that has nestedGroups — collapses/expands
+  // its children. Omitted (rather than defaulted true) so a fresh groups
+  // array from SchedulePage never fights whatever collapse state
+  // collapseAllGroups/expandAllGroups last put the live DataSet in.
+  showNested?: boolean;
+}
+
+export interface TimelineViewHandle {
+  collapseAllGroups: () => void;
+  expandAllGroups: () => void;
 }
 
 export interface TLItem {
@@ -56,10 +66,16 @@ interface Props {
   onEmptyDoubleClick: (groupId: string, time: Date) => void;
   onLabelDoubleClick: (groupId: string) => void;
   onItemMoved: (itemId: number | string, start: Date, end: Date, groupId: string) => void;
+  // Fires whenever which nesting groups are collapsed actually changes —
+  // a user clicking a job's own label, or the Collapse All/Expand All
+  // buttons, both end up here (both go through vis-timeline's own
+  // toggleGroupShowNested, which updates the groups DataSet). Lets the
+  // caller persist collapse state itself, since vis-timeline doesn't.
+  onNestingStateChange?: (collapsedGroupIds: string[]) => void;
   readOnly?: boolean;
 }
 
-export default function TimelineView({
+const TimelineView = forwardRef<TimelineViewHandle, Props>(function TimelineView({
   groups,
   items,
   window: windowRange,
@@ -68,20 +84,22 @@ export default function TimelineView({
   onEmptyDoubleClick,
   onLabelDoubleClick,
   onItemMoved,
+  onNestingStateChange,
   readOnly,
-}: Props) {
+}, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<Timeline | null>(null);
   const groupsDataSet = useRef(new DataSet<TLGroup>([]));
   const itemsDataSet = useRef(new DataSet<TLItem>([]));
-  const callbacksRef = useRef({ onItemDoubleClick, onEmptyDoubleClick, onLabelDoubleClick, onItemMoved, onWindowChange });
+  const callbacksRef = useRef({ onItemDoubleClick, onEmptyDoubleClick, onLabelDoubleClick, onItemMoved, onWindowChange, onNestingStateChange });
 
-  callbacksRef.current = { onItemDoubleClick, onEmptyDoubleClick, onLabelDoubleClick, onItemMoved, onWindowChange };
+  callbacksRef.current = { onItemDoubleClick, onEmptyDoubleClick, onLabelDoubleClick, onItemMoved, onWindowChange, onNestingStateChange };
 
   useEffect(() => {
     if (!containerRef.current) return;
+    const groupsData = groupsDataSet.current;
 
-    const timeline = new Timeline(containerRef.current, itemsDataSet.current, groupsDataSet.current, {
+    const timeline = new Timeline(containerRef.current, itemsDataSet.current, groupsData, {
       stack: true,
       horizontalScroll: true,
       zoomKey: 'ctrlKey',
@@ -89,9 +107,7 @@ export default function TimelineView({
       zoomMax: 1000 * 60 * 60 * 24 * 400, // ~13 months
       orientation: 'top',
       // margin.axis only pads the row closest to the time axis (the top
-      // row, since orientation is 'top') — negligible at full row heights
-      // but very visible as an oversized first row once compact view
-      // makes every other row much thinner.
+      // row, since orientation is 'top').
       margin: { item: 6, axis: 2 },
       // Pass the restored range up front — if the widget mounts with no
       // configured range, vis-timeline auto-fits to the item data on its
@@ -144,9 +160,25 @@ export default function TimelineView({
       callbacksRef.current.onWindowChange(props.start, props.end);
     });
 
+    // Fires on every DataSet .update() to the groups — including the one
+    // vis-timeline's own toggleGroupShowNested makes internally on a
+    // label click or our collapseAllGroups/expandAllGroups. Recomputing
+    // from the DataSet itself (rather than trying to diff the payload)
+    // keeps this correct regardless of which path triggered it.
+    const handleGroupsUpdate = () => {
+      if (!callbacksRef.current.onNestingStateChange) return;
+      const collapsedIds = groupsData
+        .get()
+        .filter((g) => g.nestedGroups && g.showNested === false)
+        .map((g) => g.id);
+      callbacksRef.current.onNestingStateChange(collapsedIds);
+    };
+    groupsData.on('update', handleGroupsUpdate);
+
     timelineRef.current = timeline;
 
     return () => {
+      groupsData.off('update', handleGroupsUpdate);
       timeline.destroy();
       timelineRef.current = null;
     };
@@ -169,5 +201,27 @@ export default function TimelineView({
     }
   }, [windowRange]);
 
+  // vis-timeline has no public "collapse every nesting group" API — a plain
+  // DataSet update only flips the parent's own showNested flag and misses
+  // the library's own cascade onto its nested children's `visible` field
+  // (confirmed by reading vis-timeline's toggleGroupShowNested source),
+  // leaving expanded phase rows still on-screen under a "collapsed" job.
+  // Reaching into the itemSet and calling that same internal method per
+  // nesting group replicates exactly what a real label click does.
+  const setAllNestingGroups = (expand: boolean) => {
+    const itemSet = (timelineRef.current as unknown as { itemSet?: Record<string, any> })?.itemSet;
+    if (!itemSet) return;
+    for (const group of Object.values(itemSet.groups as Record<string, any>)) {
+      if (group?.nestedGroups) itemSet.toggleGroupShowNested(group, expand);
+    }
+  };
+
+  useImperativeHandle(ref, () => ({
+    collapseAllGroups: () => setAllNestingGroups(false),
+    expandAllGroups: () => setAllNestingGroups(true),
+  }), []);
+
   return <div ref={containerRef} style={{ background: 'var(--panel)' }} />;
-}
+});
+
+export default TimelineView;
