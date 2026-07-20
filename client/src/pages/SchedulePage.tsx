@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
-import type { Assignment, Job, Phase, TimelinePayload } from '../types';
+import type { Assignment, Job, JobStatus, Phase, TimelinePayload } from '../types';
 import { JOB_STATUS_LABELS } from '../types';
 import TimelineView, { type TLGroup, type TLItem } from '../components/TimelineView';
 import AssignmentModal from '../components/AssignmentModal';
 import JobModal from '../components/JobModal';
 import PhaseModal from '../components/PhaseModal';
+import StatusFilterDropdown, { ACTIVE_STATUSES } from '../components/StatusFilterDropdown';
 import {
   addDays,
   addMonths,
@@ -31,7 +32,7 @@ const VIEW_STORAGE_KEY = 'rostr-schedule-view';
 interface PersistedView {
   groupMode: GroupMode;
   preset: ZoomPreset;
-  showClosed: boolean;
+  statusFilter: JobStatus[];
   compact: boolean;
   start: string;
   end: string;
@@ -59,10 +60,9 @@ export default function SchedulePage() {
   const [data, setData] = useState<TimelinePayload | null>(null);
   const [groupMode, setGroupMode] = useState<GroupMode>(() => loadPersistedView()?.groupMode ?? 'employee');
   const [preset, setPreset] = useState<ZoomPreset>(() => loadPersistedView()?.preset ?? 'month');
-  const [showClosed, setShowClosed] = useState(() => loadPersistedView()?.showClosed ?? false);
   const [compact, setCompact] = useState(() => loadPersistedView()?.compact ?? false);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<JobStatus[]>(() => loadPersistedView()?.statusFilter ?? ACTIVE_STATUSES);
   const [window, setWindow] = useState<{ start: Date; end: Date } | null>(() => {
     const persisted = loadPersistedView();
     if (persisted) return { start: new Date(persisted.start), end: new Date(persisted.end) };
@@ -89,15 +89,8 @@ export default function SchedulePage() {
   const jobColorFor = (job: Job | undefined) =>
     (job?.client_id != null ? clientsById.get(job.client_id)?.color : undefined) ?? NO_CLIENT_COLOR;
 
-  // A specific status pick is authoritative (shows that status regardless
-  // of the coarse "show completed/lost" toggle); "All statuses" falls back
-  // to the existing showClosed behaviour.
   const jobVisible = (job: Job) => {
-    if (statusFilter !== 'all') {
-      if (job.status !== statusFilter) return false;
-    } else if (!showClosed && (job.status === 'complete' || job.status === 'lost')) {
-      return false;
-    }
+    if (!statusFilter.includes(job.status)) return false;
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       const clientName = job.client_id != null ? clientsById.get(job.client_id)?.name ?? '' : '';
@@ -115,7 +108,7 @@ export default function SchedulePage() {
       return jobVisible(job);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, jobsById, showClosed, statusFilter, search]);
+  }, [data, jobsById, statusFilter, search]);
 
   // Capacity overflow depends only on the raw data (every job/phase/
   // assignment, not whatever the user currently has searched/filtered
@@ -261,7 +254,7 @@ export default function SchedulePage() {
 
     return { groups, items };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, groupMode, visibleAssignments, jobsById, employeesById, showClosed, statusFilter, search, compact, capacityOverflowItems]);
+  }, [data, groupMode, visibleAssignments, jobsById, employeesById, statusFilter, search, compact, capacityOverflowItems]);
 
   const applyPreset = (p: ZoomPreset) => {
     setPreset(p);
@@ -275,16 +268,16 @@ export default function SchedulePage() {
 
   const handleWindowChange = (start: Date, end: Date) => {
     centerRef.current = new Date((start.getTime() + end.getTime()) / 2);
-    savePersistedView({ groupMode, preset, showClosed, compact, start: start.toISOString(), end: end.toISOString() });
+    savePersistedView({ groupMode, preset, statusFilter, compact, start: start.toISOString(), end: end.toISOString() });
   };
 
   // Persist immediately when a toggle changes, without waiting for the
   // timeline to also report a range change.
   useEffect(() => {
     if (!window) return;
-    savePersistedView({ groupMode, preset, showClosed, compact, start: window.start.toISOString(), end: window.end.toISOString() });
+    savePersistedView({ groupMode, preset, statusFilter, compact, start: window.start.toISOString(), end: window.end.toISOString() });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupMode, preset, showClosed, compact]);
+  }, [groupMode, preset, statusFilter, compact]);
 
   const handleItemDoubleClick = (itemId: number | string) => {
     if (typeof itemId === 'string') {
@@ -413,25 +406,7 @@ export default function SchedulePage() {
           style={{ width: 220 }}
         />
 
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: 160 }}>
-          <option value="all">All statuses</option>
-          {Object.entries(JOB_STATUS_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-
-        <label style={{ fontSize: 13, color: 'var(--text-dim)', display: 'flex', gap: 6, alignItems: 'center' }}>
-          <input
-            type="checkbox"
-            checked={showClosed}
-            onChange={(e) => setShowClosed(e.target.checked)}
-            disabled={statusFilter !== 'all'}
-            style={{ width: 'auto' }}
-          />
-          Show completed / lost jobs
-        </label>
+        <StatusFilterDropdown value={statusFilter} onChange={setStatusFilter} />
 
         {!isReadOnly && (
           <button className="btn btn-primary" style={{ marginLeft: 'auto' }} onClick={() => setCreating({})}>

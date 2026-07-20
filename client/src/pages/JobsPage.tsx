@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
-import type { Client, Job, JobWithPhases, Phase } from '../types';
+import type { Client, Job, JobStatus, JobWithPhases, Phase } from '../types';
 import { JOB_STATUS_LABELS } from '../types';
 import JobModal from '../components/JobModal';
 import PhaseModal from '../components/PhaseModal';
+import StatusFilterDropdown, { ALL_STATUSES } from '../components/StatusFilterDropdown';
 import ImportModal, { type ImportField } from '../components/ImportModal';
 import { matchJobStatus } from '../lib/jobStatus';
 import { formatShortDate } from '../lib/dates';
@@ -31,7 +32,7 @@ export default function JobsPage() {
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [showAddPhase, setShowAddPhase] = useState(false);
   const [editingPhase, setEditingPhase] = useState<Phase | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<JobStatus[]>(ALL_STATUSES);
   const [search, setSearch] = useState('');
 
   const loadJobs = () => api.getJobs().then(setJobs);
@@ -76,7 +77,7 @@ export default function JobsPage() {
   }, [jobs]);
 
   const visibleJobs = jobs.filter((j) => {
-    if (statusFilter !== 'all' && j.status !== statusFilter) return false;
+    if (!statusFilter.includes(j.status)) return false;
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       const haystack = `${j.name} ${j.code ?? ''} ${clientFor(j)?.name ?? ''}`.toLowerCase();
@@ -96,14 +97,7 @@ export default function JobsPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
           <div style={{ display: 'flex', gap: 8 }}>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ flex: 1 }}>
-            <option value="all">All statuses</option>
-            {Object.entries(JOB_STATUS_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
+          <StatusFilterDropdown value={statusFilter} onChange={setStatusFilter} style={{ flex: 1, width: 'auto' }} />
           {!isReadOnly && (
             <>
               <button
