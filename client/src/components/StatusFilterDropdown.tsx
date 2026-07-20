@@ -3,7 +3,7 @@ import type { JobStatus } from '../types';
 import { JOB_STATUS_LABELS } from '../types';
 
 export const ALL_STATUSES = Object.keys(JOB_STATUS_LABELS) as JobStatus[];
-export const ACTIVE_STATUSES = ALL_STATUSES.filter((s) => s !== 'complete' && s !== 'lost');
+export const ACTIVE_STATUSES = ALL_STATUSES.filter((s) => s !== 'complete' && s !== 'lost' && s !== 'on_hold');
 
 interface Props {
   value: JobStatus[];
