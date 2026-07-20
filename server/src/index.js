@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
@@ -19,6 +20,7 @@ import jobsRouter from './routes/jobs.js';
 import phasesRouter from './routes/phases.js';
 import assignmentsRouter from './routes/assignments.js';
 import timelineRouter from './routes/timeline.js';
+import summariesRouter from './routes/summaries.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -50,6 +52,7 @@ app.use('/api/jobs', requireAuth, jobsRouter);
 app.use('/api/phases', requireAuth, phasesRouter);
 app.use('/api/assignments', requireAuth, assignmentsRouter);
 app.use('/api/timeline', requireAuth, timelineRouter);
+app.use('/api/summaries', requireAuth, summariesRouter);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 

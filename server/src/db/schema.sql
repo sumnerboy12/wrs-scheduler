@@ -73,6 +73,13 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Generic key/value store for small bits of app config (currently just the
+-- summary email template) — not worth a dedicated table per setting.
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_phases_job ON phases(job_id);
 CREATE INDEX IF NOT EXISTS idx_assignments_phase ON assignments(phase_id);
 CREATE INDEX IF NOT EXISTS idx_assignments_employee ON assignments(employee_id);

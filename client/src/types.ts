@@ -93,6 +93,44 @@ export interface ManagedUser {
   created_at: string;
 }
 
+export interface SummaryItem {
+  job_name: string;
+  job_code: string | null;
+  phase_name: string;
+  start_date: string;
+  end_date: string;
+  allocation_pct: number;
+}
+
+export interface EmployeeSummary {
+  id: number;
+  name: string;
+  email: string | null;
+  items: SummaryItem[];
+}
+
+export interface SummariesPayload {
+  mailConfigured: boolean;
+  employees: EmployeeSummary[];
+}
+
+export interface SendSummariesResult {
+  employee_id: number;
+  name: string;
+  status: 'sent' | 'skipped' | 'failed';
+  reason?: string;
+}
+
+export interface SummaryTemplate {
+  subject: string;
+  body: string;
+}
+
+export interface SummaryPreview {
+  subject: string;
+  text: string;
+}
+
 export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
   pipeline: 'Pipeline',
   quoted: 'Quoted',

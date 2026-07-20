@@ -1,4 +1,19 @@
-import type { Assignment, AuthUser, Client, Employee, Job, JobWithPhases, ManagedUser, Phase, TimelinePayload, UserRole } from '../types';
+import type {
+  Assignment,
+  AuthUser,
+  Client,
+  Employee,
+  Job,
+  JobWithPhases,
+  ManagedUser,
+  Phase,
+  SendSummariesResult,
+  SummariesPayload,
+  SummaryPreview,
+  SummaryTemplate,
+  TimelinePayload,
+  UserRole,
+} from '../types';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -65,4 +80,19 @@ export const api = {
   updateAssignment: (id: number, data: Partial<Assignment>) =>
     request<Assignment>(`/assignments/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteAssignment: (id: number) => request<void>(`/assignments/${id}`, { method: 'DELETE' }),
+
+  getSummaries: (start: string, end: string) =>
+    request<SummariesPayload>(`/summaries?start=${start}&end=${end}`),
+  sendSummaries: (start: string, end: string, employeeIds: number[], includeWeekends: boolean) =>
+    request<{ results: SendSummariesResult[] }>('/summaries/send', {
+      method: 'POST',
+      body: JSON.stringify({ start, end, employeeIds, includeWeekends }),
+    }),
+  getSummaryTemplate: () => request<SummaryTemplate>('/summaries/template'),
+  updateSummaryTemplate: (data: SummaryTemplate) =>
+    request<SummaryTemplate>('/summaries/template', { method: 'PUT', body: JSON.stringify(data) }),
+  previewSummary: (employeeId: number, start: string, end: string, includeWeekends: boolean) =>
+    request<SummaryPreview>(
+      `/summaries/preview?employeeId=${employeeId}&start=${start}&end=${end}&includeWeekends=${includeWeekends}`
+    ),
 };

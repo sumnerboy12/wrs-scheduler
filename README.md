@@ -112,6 +112,28 @@ out and they'll need to log in again — nothing else is lost.
   colour on the Schedule always comes from its linked client, not the job
   itself.
 - **Employees** — manage your staff list.
+- **Summaries** — preview each active employee's bookings for a date range
+  (defaults to the next 7 days) and email it to them as a weekly schedule.
+  The email wording itself is editable (**Edit template**, with a few
+  placeholders like the employee's name and date range) and each person's
+  message can be previewed individually before anything sends. Needs email
+  set up first — see below.
+
+## Emailing weekly summaries (optional)
+
+The Summaries screen can email each employee their upcoming bookings, but
+needs an SMTP account configured first — any mailbox that supports SMTP
+works (your business email, or a transactional provider like
+Resend/SendGrid/Postmark's SMTP endpoint). Without this, Summaries still
+works for previewing — sending is just disabled with a clear message.
+
+- **Windows PC install**: copy `server/.env.example` to `server/.env` and
+  fill in `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` (and `SMTP_PORT`/
+  `SMTP_SECURE` if your provider needs something other than the defaults).
+  Restart the app (`start.cmd`) after saving it.
+- **Docker install**: create a `.env` file next to `docker-compose.yml` with
+  the same variables — `docker compose up -d --build` picks it up
+  automatically (see the comment in `docker-compose.yml`).
 
 ## Development mode
 

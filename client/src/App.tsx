@@ -7,6 +7,7 @@ import SchedulePage from './pages/SchedulePage';
 import JobsPage from './pages/JobsPage';
 import ClientsPage from './pages/ClientsPage';
 import EmployeesPage from './pages/EmployeesPage';
+import SummariesPage from './pages/SummariesPage';
 import UsersPage from './pages/UsersPage';
 
 function Gate() {
@@ -25,6 +26,7 @@ function Gate() {
         <Route path="jobs" element={<JobsPage />} />
         <Route path="clients" element={<ClientsPage />} />
         <Route path="employees" element={<EmployeesPage />} />
+        <Route path="summaries" element={<SummariesPage />} />
         <Route path="users" element={<UsersPage />} />
       </Route>
     </Routes>

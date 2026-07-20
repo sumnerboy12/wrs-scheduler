@@ -8,3 +8,14 @@ services:
       - "4000:4000"
     volumes:
       - ./data:/app/server/data
+    # Optional — only needed for the Schedule > Summaries > email feature.
+    # Create a .env file next to this docker-compose.yml (docker compose
+    # loads it automatically) with SMTP_HOST/SMTP_USER/SMTP_PASS etc. set;
+    # leave it out entirely and email sending just stays disabled.
+    environment:
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-}

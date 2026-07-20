@@ -11,6 +11,26 @@ import { matchJobStatus } from '../lib/jobStatus';
 import { formatShortDate } from '../lib/dates';
 import { NO_CLIENT_COLOR } from '../lib/colors';
 
+const STATUS_FILTER_KEY = 'rostr-jobs-status-filter';
+
+function loadPersistedStatusFilter(): JobStatus[] {
+  try {
+    const raw = localStorage.getItem(STATUS_FILTER_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // storage unavailable — just use the default
+  }
+  return ALL_STATUSES;
+}
+
+function savePersistedStatusFilter(filter: JobStatus[]) {
+  try {
+    localStorage.setItem(STATUS_FILTER_KEY, JSON.stringify(filter));
+  } catch {
+    // storage unavailable — filter just won't persist
+  }
+}
+
 const JOB_IMPORT_FIELDS: ImportField[] = [
   { key: 'code', label: 'Job code', aliases: ['job code', 'code', 'job #', 'job number', 'reference', 'ref'] },
   { key: 'name', label: 'Job name', required: true, aliases: ['name', 'job', 'job name', 'project', 'project name', 'title'] },
@@ -32,8 +52,10 @@ export default function JobsPage() {
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [showAddPhase, setShowAddPhase] = useState(false);
   const [editingPhase, setEditingPhase] = useState<Phase | null>(null);
-  const [statusFilter, setStatusFilter] = useState<JobStatus[]>(ALL_STATUSES);
+  const [statusFilter, setStatusFilter] = useState<JobStatus[]>(loadPersistedStatusFilter);
   const [search, setSearch] = useState('');
+
+  useEffect(() => savePersistedStatusFilter(statusFilter), [statusFilter]);
 
   const loadJobs = () => api.getJobs().then(setJobs);
   const loadClients = () => api.getClients().then(setClients);
