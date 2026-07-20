@@ -392,10 +392,22 @@ export default function SchedulePage() {
         </div>
 
         {groupMode === 'job' && (
-          <label style={{ fontSize: 13, color: 'var(--text-dim)', display: 'flex', gap: 6, alignItems: 'center' }}>
-            <input type="checkbox" checked={compact} onChange={(e) => setCompact(e.target.checked)} style={{ width: 'auto' }} />
-            Compact view
-          </label>
+          <div className="toolbar-group">
+            <button
+              className="btn"
+              onClick={() => setCompact(false)}
+              style={{ background: !compact ? 'var(--accent)' : undefined, borderColor: !compact ? 'var(--accent)' : undefined }}
+            >
+              Phases
+            </button>
+            <button
+              className="btn"
+              onClick={() => setCompact(true)}
+              style={{ background: compact ? 'var(--accent)' : undefined, borderColor: compact ? 'var(--accent)' : undefined }}
+            >
+              Summary
+            </button>
+          </div>
         )}
 
         <input
