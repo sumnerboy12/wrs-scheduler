@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
-import type { Client, Job, JobStatus, JobWithPhases, Phase } from '../types';
+import type { Client, Employee, Job, JobStatus, JobWithPhases, Phase } from '../types';
 import { JOB_STATUS_LABELS } from '../types';
 import JobModal from '../components/JobModal';
 import PhaseModal from '../components/PhaseModal';
@@ -45,6 +45,7 @@ export default function JobsPage() {
   const { isReadOnly } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detail, setDetail] = useState<JobWithPhases | null>(null);
   const [showAddJob, setShowAddJob] = useState(false);
@@ -59,6 +60,7 @@ export default function JobsPage() {
 
   const loadJobs = () => api.getJobs().then(setJobs);
   const loadClients = () => api.getClients().then(setClients);
+  const loadEmployees = () => api.getEmployees().then((data) => setEmployees(data.filter((e) => e.active)));
   const loadDetail = (id: number) => api.getJob(id).then(setDetail);
 
   const clientsById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
@@ -87,6 +89,7 @@ export default function JobsPage() {
   useEffect(() => {
     loadJobs();
     loadClients();
+    loadEmployees();
   }, []);
 
   useEffect(() => {
@@ -299,6 +302,7 @@ export default function JobsPage() {
         <JobModal
           job={null}
           clients={clients}
+          employees={employees}
           onClose={() => setShowAddJob(false)}
           onSave={async (data) => {
             const created = await api.createJob(data);
@@ -311,6 +315,7 @@ export default function JobsPage() {
         <JobModal
           job={editingJob}
           clients={clients}
+          employees={employees}
           onClose={() => setEditingJob(null)}
           onSave={async (data) => {
             await api.updateJob(editingJob.id, data);

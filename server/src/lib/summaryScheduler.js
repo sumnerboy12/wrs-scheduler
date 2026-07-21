@@ -8,6 +8,14 @@ import {
   nextWeekRange,
   currentWeekKey,
 } from './weeklySummary.js';
+import {
+  buildJobCrewSummaries,
+  formatJobSummaryEmail,
+  getJobTemplate,
+  getJobAutoSendConfig,
+  getJobAutoSendLastRunWeek,
+  setJobAutoSendLastRunWeek,
+} from './jobSummary.js';
 import { sendMail, isMailConfigured } from './mailer.js';
 
 const CHECK_INTERVAL_MS = 60_000;
@@ -31,23 +39,52 @@ async function sendAutoSummaries(includeWeekends) {
   console.log(`[summary auto-send] sent ${summaries.length} weekly summaries for ${start} – ${end}`);
 }
 
-function tick() {
-  const config = getAutoSendConfig();
-  if (!config.enabled || !isMailConfigured()) return;
+async function sendAutoJobSummaries(includeWeekends) {
+  const template = getJobTemplate();
+  const { start, end } = nextWeekRange();
+  // Only jobs with an actual crew booked and a reachable supervisor — same
+  // "nothing to say" skip as the employee auto-send above.
+  const summaries = buildJobCrewSummaries(start, end).filter((s) => s.items.length > 0 && s.job.supervisor_email);
 
-  const now = new Date();
-  const thisWeek = currentWeekKey(now);
-  if (getAutoSendLastRunWeek() === thisWeek) return; // already sent this week's batch
+  for (const { job, items } of summaries) {
+    try {
+      const { subject, text, html } = formatJobSummaryEmail(job, items, start, end, template, includeWeekends);
+      await sendMail({ to: job.supervisor_email, subject, text, html });
+    } catch (e) {
+      console.error(`[job summary auto-send] failed to email ${job.supervisor_name} for ${job.name}:`, e.message);
+    }
+  }
+  console.log(`[job summary auto-send] sent ${summaries.length} crew summaries for ${start} – ${end}`);
+}
+
+// True once a week, the first tick at/after the configured day+time — and
+// only once, since the caller marks the week as done (via setLastRunWeek)
+// before the async send even starts, so an overlapping tick or a slow send
+// can't trigger a second batch for the same week.
+function shouldFireNow(config, lastRunWeek, now) {
+  if (!config.enabled) return false;
+  if (lastRunWeek === currentWeekKey(now)) return false;
 
   const [hour, minute] = config.time.split(':').map(Number);
   const scheduledMinutes = hour * 60 + minute;
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  return now.getDay() === config.dayOfWeek && nowMinutes >= scheduledMinutes;
+}
 
-  if (now.getDay() === config.dayOfWeek && nowMinutes >= scheduledMinutes) {
-    // Mark the week as done before sending (not after) so an overlapping
-    // tick — or a slow send — can't trigger a second batch for the same week.
-    setAutoSendLastRunWeek(thisWeek);
+function tick() {
+  if (!isMailConfigured()) return;
+  const now = new Date();
+
+  const config = getAutoSendConfig();
+  if (shouldFireNow(config, getAutoSendLastRunWeek(), now)) {
+    setAutoSendLastRunWeek(currentWeekKey(now));
     sendAutoSummaries(config.includeWeekends).catch((e) => console.error('[summary auto-send] run failed:', e));
+  }
+
+  const jobConfig = getJobAutoSendConfig();
+  if (shouldFireNow(jobConfig, getJobAutoSendLastRunWeek(), now)) {
+    setJobAutoSendLastRunWeek(currentWeekKey(now));
+    sendAutoJobSummaries(jobConfig.includeWeekends).catch((e) => console.error('[job summary auto-send] run failed:', e));
   }
 }
 

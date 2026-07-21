@@ -3,6 +3,8 @@ import type { AutoSendConfig } from '../types';
 
 interface Props {
   config: AutoSendConfig;
+  description: string;
+  showIncludeWeekends?: boolean;
   onClose: () => void;
   onSave: (data: AutoSendConfig) => Promise<void>;
 }
@@ -17,7 +19,7 @@ const DAY_OPTIONS = [
   { value: 0, label: 'Sunday' },
 ];
 
-export default function AutoSendSettingsModal({ config, onClose, onSave }: Props) {
+export default function AutoSendSettingsModal({ config, description, showIncludeWeekends = true, onClose, onSave }: Props) {
   const [enabled, setEnabled] = useState(config.enabled);
   const [dayOfWeek, setDayOfWeek] = useState(config.dayOfWeek);
   const [time, setTime] = useState(config.time);
@@ -65,30 +67,29 @@ export default function AutoSendSettingsModal({ config, onClose, onSave }: Props
           </div>
         </div>
 
-        <label
-          style={{
-            display: 'flex',
-            gap: 8,
-            alignItems: 'center',
-            marginBottom: 16,
-            fontSize: 13,
-            opacity: enabled ? 1 : 0.5,
-          }}
-        >
-          <input
-            type="checkbox"
-            style={{ width: 'auto' }}
-            checked={includeWeekends}
-            onChange={(e) => setIncludeWeekends(e.target.checked)}
-            disabled={!enabled}
-          />
-          Include weekends in the bookings table
-        </label>
+        {showIncludeWeekends && (
+          <label
+            style={{
+              display: 'flex',
+              gap: 8,
+              alignItems: 'center',
+              marginBottom: 16,
+              fontSize: 13,
+              opacity: enabled ? 1 : 0.5,
+            }}
+          >
+            <input
+              type="checkbox"
+              style={{ width: 'auto' }}
+              checked={includeWeekends}
+              onChange={(e) => setIncludeWeekends(e.target.checked)}
+              disabled={!enabled}
+            />
+            Include weekends in the bookings table
+          </label>
+        )}
 
-        <p style={{ color: 'var(--text-dim)', fontSize: 13, marginTop: -8 }}>
-          Sends to every active employee with a booking next week (Mon–Sun) and an email on
-          file. Turn this off any time to go back to sending manually.
-        </p>
+        <p style={{ color: 'var(--text-dim)', fontSize: 13, marginTop: -8 }}>{description}</p>
 
         {error && <div style={{ color: 'var(--danger)', marginBottom: 12 }}>{error}</div>}
 

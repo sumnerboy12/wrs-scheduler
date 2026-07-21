@@ -1,23 +1,25 @@
 import { useState } from 'react';
-import type { Client, Job, JobStatus } from '../types';
+import type { Client, Employee, Job, JobStatus } from '../types';
 import { JOB_STATUS_LABELS } from '../types';
 
 interface Props {
   job: Job | null;
   clients: Client[];
+  employees: Employee[];
   onClose: () => void;
   onSave: (data: Partial<Job>) => Promise<void>;
   onDelete?: (id: number) => Promise<void>;
   readOnly?: boolean;
 }
 
-export default function JobModal({ job, clients, onClose, onSave, onDelete, readOnly }: Props) {
+export default function JobModal({ job, clients, employees, onClose, onSave, onDelete, readOnly }: Props) {
   const [code, setCode] = useState(job?.code ?? '');
   const [name, setName] = useState(job?.name ?? '');
   const [clientId, setClientId] = useState<number | ''>(job?.client_id ?? '');
   const [address, setAddress] = useState(job?.address ?? '');
   const [status, setStatus] = useState<JobStatus>(job?.status ?? 'pipeline');
   const [probability, setProbability] = useState<string>(job?.probability?.toString() ?? '');
+  const [supervisorId, setSupervisorId] = useState<number | ''>(job?.supervisor_id ?? '');
   const [notes, setNotes] = useState(job?.notes ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,7 @@ export default function JobModal({ job, clients, onClose, onSave, onDelete, read
         address,
         status,
         probability: probability ? Number(probability) : null,
+        supervisor_id: supervisorId === '' ? null : Number(supervisorId),
         notes,
       });
       onClose();
@@ -83,6 +86,24 @@ export default function JobModal({ job, clients, onClose, onSave, onDelete, read
               No clients yet — add one from the Clients page first.
             </div>
           )}
+        </div>
+        <div className="field">
+          <label>Supervisor</label>
+          <select
+            value={supervisorId}
+            onChange={(e) => setSupervisorId(e.target.value ? Number(e.target.value) : '')}
+            disabled={readOnly}
+          >
+            <option value="">— No supervisor —</option>
+            {employees.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.name}
+              </option>
+            ))}
+          </select>
+          <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+            Who gets the weekly "crew on this job" email from Summaries — see the Summaries screen.
+          </div>
         </div>
         <div className="field">
           <label>Address</label>

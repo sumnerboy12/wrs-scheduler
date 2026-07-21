@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import type { SummaryTemplate } from '../types';
 
-interface Props {
-  template: SummaryTemplate;
-  onClose: () => void;
-  onSave: (data: SummaryTemplate) => Promise<void>;
+export interface SummaryPlaceholder {
+  token: string;
+  description: string;
 }
 
-const PLACEHOLDERS = [
+export const EMPLOYEE_SUMMARY_PLACEHOLDERS: SummaryPlaceholder[] = [
   { token: '{{first_name}}', description: "employee's first name" },
   { token: '{{full_name}}', description: "employee's full name" },
   { token: '{{start_date}}', description: 'range start, e.g. Mon 20 Jul' },
@@ -15,7 +14,24 @@ const PLACEHOLDERS = [
   { token: '{{bookings}}', description: 'the rendered list of bookings (or "nothing scheduled")' },
 ];
 
-export default function SummaryTemplateModal({ template, onClose, onSave }: Props) {
+export const JOB_SUMMARY_PLACEHOLDERS: SummaryPlaceholder[] = [
+  { token: '{{supervisor_first_name}}', description: "supervisor's first name" },
+  { token: '{{supervisor_name}}', description: "supervisor's full name" },
+  { token: '{{job_name}}', description: 'the job name' },
+  { token: '{{job_code}}', description: 'the job code (blank for Pipeline/Quoted jobs)' },
+  { token: '{{start_date}}', description: 'range start, e.g. Mon 20 Jul' },
+  { token: '{{end_date}}', description: 'range end, e.g. Sun 26 Jul' },
+  { token: '{{crew}}', description: 'the rendered crew list (or "no one currently booked")' },
+];
+
+interface Props {
+  template: SummaryTemplate;
+  placeholders: SummaryPlaceholder[];
+  onClose: () => void;
+  onSave: (data: SummaryTemplate) => Promise<void>;
+}
+
+export default function SummaryTemplateModal({ template, placeholders, onClose, onSave }: Props) {
   const [subject, setSubject] = useState(template.subject);
   const [body, setBody] = useState(template.body);
   const [saving, setSaving] = useState(false);
@@ -54,7 +70,7 @@ export default function SummaryTemplateModal({ template, onClose, onSave }: Prop
 
         <div className="card" style={{ padding: 12, marginBottom: 16, fontSize: 13 }}>
           <div style={{ color: 'var(--text-dim)', marginBottom: 6 }}>Placeholders you can use:</div>
-          {PLACEHOLDERS.map((p) => (
+          {placeholders.map((p) => (
             <div key={p.token} style={{ display: 'flex', gap: 8, marginBottom: 3 }}>
               <code style={{ background: 'var(--panel-alt)', padding: '1px 5px', borderRadius: 4 }}>{p.token}</code>
               <span style={{ color: 'var(--text-dim)' }}>{p.description}</span>

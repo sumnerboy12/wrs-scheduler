@@ -577,6 +577,7 @@ export default function SchedulePage() {
         <JobModal
           job={editingJob}
           clients={data.clients}
+          employees={activeEmployees}
           onClose={() => setEditingJob(null)}
           onSave={async (patch) => {
             await api.updateJob(editingJob.id, patch);

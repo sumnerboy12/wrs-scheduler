@@ -37,13 +37,13 @@ router.get('/:id', (req, res) => {
 });
 
 router.post('/', requireWrite, (req, res) => {
-  const { code, name, client_id, address, status, probability, notes } = req.body;
+  const { code, name, client_id, address, status, probability, notes, supervisor_id } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'name is required' });
 
   const result = db
     .prepare(
-      `INSERT INTO jobs (code, name, client_id, address, status, probability, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO jobs (code, name, client_id, address, status, probability, notes, supervisor_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       code || null,
@@ -52,7 +52,8 @@ router.post('/', requireWrite, (req, res) => {
       address || null,
       status || 'pipeline',
       probability ?? null,
-      notes || null
+      notes || null,
+      supervisor_id || null
     );
 
   const row = db.prepare('SELECT * FROM jobs WHERE id = ?').get(result.lastInsertRowid);
@@ -64,10 +65,10 @@ router.put('/:id', requireWrite, (req, res) => {
   const existing = db.prepare('SELECT * FROM jobs WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'not found' });
 
-  const { code, name, client_id, address, status, probability, notes } = req.body;
+  const { code, name, client_id, address, status, probability, notes, supervisor_id } = req.body;
   db.prepare(
     `UPDATE jobs SET
-       code = ?, name = ?, client_id = ?, address = ?, status = ?, probability = ?, notes = ?, updated_at = datetime('now')
+       code = ?, name = ?, client_id = ?, address = ?, status = ?, probability = ?, notes = ?, supervisor_id = ?, updated_at = datetime('now')
      WHERE id = ?`
   ).run(
     code ?? existing.code,
@@ -77,6 +78,7 @@ router.put('/:id', requireWrite, (req, res) => {
     status ?? existing.status,
     probability ?? existing.probability,
     notes ?? existing.notes,
+    supervisor_id !== undefined ? supervisor_id : existing.supervisor_id,
     id
   );
 

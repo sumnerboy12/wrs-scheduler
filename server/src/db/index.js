@@ -54,11 +54,16 @@ if (jobColumns.includes('color')) {
   db.exec('ALTER TABLE jobs DROP COLUMN color');
 }
 
+if (!jobColumns.includes('supervisor_id')) {
+  db.exec('ALTER TABLE jobs ADD COLUMN supervisor_id INTEGER REFERENCES employees(id) ON DELETE SET NULL');
+}
+
 // Created here rather than in schema.sql: on an existing database, the
 // index would run in the same schema.exec() pass as CREATE TABLE IF NOT
 // EXISTS jobs — which is a no-op on a table that already exists — so
 // client_id wouldn't exist as a column yet at that point.
 db.exec('CREATE INDEX IF NOT EXISTS idx_jobs_client ON jobs(client_id)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_jobs_supervisor ON jobs(supervisor_id)');
 
 // is_admin (binary) replaced by a role enum so a "readonly" tier can exist
 // alongside admin/editor. Existing admins are carried over before the old

@@ -29,6 +29,10 @@ CREATE TABLE IF NOT EXISTS jobs (
   status TEXT NOT NULL DEFAULT 'pipeline'
     CHECK (status IN ('pipeline','quoted','confirmed','in_progress','on_hold','complete','lost')),
   probability INTEGER,
+  -- Who gets the weekly "crew on this job" email (see Summaries) — optional,
+  -- and distinct from the client: the supervisor is one of your own
+  -- employees, not the customer.
+  supervisor_id INTEGER REFERENCES employees(id) ON DELETE SET NULL,
   notes TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))

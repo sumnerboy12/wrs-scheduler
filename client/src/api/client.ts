@@ -5,9 +5,11 @@ import type {
   Client,
   Employee,
   Job,
+  JobSummariesPayload,
   JobWithPhases,
   ManagedUser,
   Phase,
+  SendJobSummariesResult,
   SendSummariesResult,
   SummariesPayload,
   SummaryPreview,
@@ -99,4 +101,22 @@ export const api = {
   getAutoSendConfig: () => request<AutoSendConfig>('/summaries/auto-send'),
   updateAutoSendConfig: (data: AutoSendConfig) =>
     request<AutoSendConfig>('/summaries/auto-send', { method: 'PUT', body: JSON.stringify(data) }),
+
+  getJobSummaries: (start: string, end: string) =>
+    request<JobSummariesPayload>(`/summaries/jobs?start=${start}&end=${end}`),
+  sendJobSummaries: (start: string, end: string, jobIds: number[], includeWeekends: boolean) =>
+    request<{ results: SendJobSummariesResult[] }>('/summaries/jobs/send', {
+      method: 'POST',
+      body: JSON.stringify({ start, end, jobIds, includeWeekends }),
+    }),
+  getJobSummaryTemplate: () => request<SummaryTemplate>('/summaries/jobs/template'),
+  updateJobSummaryTemplate: (data: SummaryTemplate) =>
+    request<SummaryTemplate>('/summaries/jobs/template', { method: 'PUT', body: JSON.stringify(data) }),
+  previewJobSummary: (jobId: number, start: string, end: string, includeWeekends: boolean) =>
+    request<SummaryPreview>(
+      `/summaries/jobs/preview?jobId=${jobId}&start=${start}&end=${end}&includeWeekends=${includeWeekends}`
+    ),
+  getJobAutoSendConfig: () => request<AutoSendConfig>('/summaries/jobs/auto-send'),
+  updateJobAutoSendConfig: (data: AutoSendConfig) =>
+    request<AutoSendConfig>('/summaries/jobs/auto-send', { method: 'PUT', body: JSON.stringify(data) }),
 };

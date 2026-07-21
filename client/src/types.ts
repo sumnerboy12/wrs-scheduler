@@ -33,6 +33,7 @@ export interface Job {
   address: string | null;
   status: JobStatus;
   probability: number | null;
+  supervisor_id: number | null;
   notes: string | null;
 }
 
@@ -137,6 +138,36 @@ export interface AutoSendConfig {
   dayOfWeek: number; // 0 = Sunday .. 6 = Saturday, matches Date#getDay()
   time: string; // 24-hour "HH:MM"
   includeWeekends: boolean;
+}
+
+export interface JobCrewItem {
+  phase_name: string;
+  employee_name: string;
+  start_date: string;
+  end_date: string;
+  allocation_pct: number;
+}
+
+export interface JobSummary {
+  id: number;
+  name: string;
+  code: string | null;
+  supervisor_id: number | null;
+  supervisor_name: string | null;
+  supervisor_email: string | null;
+  items: JobCrewItem[];
+}
+
+export interface JobSummariesPayload {
+  mailConfigured: boolean;
+  jobs: JobSummary[];
+}
+
+export interface SendJobSummariesResult {
+  job_id: number;
+  name: string;
+  status: 'sent' | 'skipped' | 'failed';
+  reason?: string;
 }
 
 export const JOB_STATUS_LABELS: Record<JobStatus, string> = {

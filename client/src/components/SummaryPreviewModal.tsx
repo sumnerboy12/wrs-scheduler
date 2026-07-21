@@ -1,19 +1,28 @@
-import type { SendSummariesResult, SummaryPreview } from '../types';
+import type { SummaryPreview } from '../types';
+
+// Structural rather than SendSummariesResult/SendJobSummariesResult
+// specifically — this modal only reads status/reason, and is shared by
+// both the employee and job-supervisor flows, whose result rows differ
+// only in which id field they carry (employee_id vs job_id).
+interface PreviewSendResult {
+  status: 'sent' | 'skipped' | 'failed';
+  reason?: string;
+}
 
 interface Props {
-  employeeName: string;
+  title: string;
   preview: SummaryPreview | null;
   loading: boolean;
   error: string | null;
   onClose: () => void;
   onSend?: () => void;
   sending?: boolean;
-  sendResult?: SendSummariesResult | null;
+  sendResult?: PreviewSendResult | null;
   canSend?: boolean;
 }
 
 export default function SummaryPreviewModal({
-  employeeName,
+  title,
   preview,
   loading,
   error,
@@ -26,7 +35,7 @@ export default function SummaryPreviewModal({
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" style={{ width: 600 }} onClick={(e) => e.stopPropagation()}>
-        <h2>Preview: {employeeName}</h2>
+        <h2>Preview: {title}</h2>
 
         {loading && <div style={{ padding: 12, color: 'var(--text-dim)' }}>Loading…</div>}
         {error && <div style={{ color: 'var(--danger)', marginBottom: 12 }}>{error}</div>}
