@@ -130,8 +130,9 @@ works for previewing — sending is just disabled with a clear message.
 - **Windows PC install**: copy `server/.env.example` to `server/.env` and
   fill in `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` (and `SMTP_PORT`/
   `SMTP_SECURE` if your provider needs something other than the defaults,
-  or `SMTP_REPLY_TO` if replies should land somewhere other than
-  `SMTP_FROM`). Restart the app (`start.cmd`) after saving it.
+  `SMTP_FROM_NAME` for a display name, or `SMTP_REPLY_TO` if replies
+  should land somewhere other than `SMTP_FROM`). Restart the app
+  (`start.cmd`) after saving it.
 - **Docker install**: create a `.env` file next to `docker-compose.yml` with
   the same variables — `docker compose up -d --build` picks it up
   automatically (see the comment in `docker-compose.yml`).
