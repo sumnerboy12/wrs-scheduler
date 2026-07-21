@@ -77,22 +77,9 @@ export function saveTemplate({ subject, body }) {
   return getTemplate();
 }
 
-// Sentinel pushed into the rows list at each calendar-week boundary so
-// renderTable can draw a full-width divider there instead of a data row.
+// Sentinel pushed into the rows list at each calendar-week boundary so the
+// table renderers can draw a full-width divider there instead of a data row.
 const WEEK_SEPARATOR = Symbol('week-separator');
-
-// Fixed-width plain-text table — aligns cleanly in any monospace-rendered
-// plain-text email client (which is effectively all of them) without
-// needing an HTML body.
-function renderTable(headers, rows) {
-  const dataRows = rows.filter((r) => r !== WEEK_SEPARATOR);
-  const widths = headers.map((h, i) => Math.max(h.length, ...dataRows.map((r) => r[i].length)));
-  const formatRow = (cells) => cells.map((c, i) => c.padEnd(widths[i])).join('  ').trimEnd();
-  const headerSeparator = widths.map((w) => '-'.repeat(w)).join('  ');
-  const weekSeparator = widths.map((w) => '-'.repeat(w)).join('  ');
-  const body = rows.map((row) => (row === WEEK_SEPARATOR ? weekSeparator : formatRow(row)));
-  return [formatRow(headers), headerSeparator, ...body].join('\n');
-}
 
 // One row per calendar day in the range (not one row per assignment) — an
 // assignment spanning three weeks would otherwise show its full span on
@@ -104,8 +91,9 @@ function renderTable(headers, rows) {
 // week is always Mon–Sun); this only controls whether those days show up
 // in the table.
 // A divider is drawn at each Mon–Sun week boundary, but only once the
-// range actually crosses one — a single week never gets a divider.
-function renderBookings(items, startDate, endDate, includeWeekends) {
+// range actually crosses one — a single week never gets a divider. Shared
+// by both the plain-text and HTML renderers so they never drift apart.
+function buildBookingRows(items, startDate, endDate, includeWeekends) {
   const rows = [];
   const end = parseISODate(endDate);
   for (let cursor = parseISODate(startDate); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
@@ -126,7 +114,49 @@ function renderBookings(items, startDate, endDate, includeWeekends) {
       }
     }
   }
-  return renderTable(['Day', 'Job', 'Phase'], rows);
+  return rows;
+}
+
+// Fixed-width plain-text table — this is only a reasonable fallback for
+// clients that render the plain-text part in a monospace font. Most (e.g.
+// Outlook) don't, so it's no longer the primary rendering — see
+// renderBookingsHtml below — but it's kept as the multipart/alternative
+// text version for clients that can't render HTML at all.
+function renderBookingsText(rows) {
+  const headers = ['Day', 'Job', 'Phase'];
+  const dataRows = rows.filter((r) => r !== WEEK_SEPARATOR);
+  const widths = headers.map((h, i) => Math.max(h.length, ...dataRows.map((r) => r[i].length)));
+  const formatRow = (cells) => cells.map((c, i) => c.padEnd(widths[i])).join('  ').trimEnd();
+  const headerSeparator = widths.map((w) => '-'.repeat(w)).join('  ');
+  const body = rows.map((row) => (row === WEEK_SEPARATOR ? headerSeparator : formatRow(row)));
+  return [formatRow(headers), headerSeparator, ...body].join('\n');
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Real HTML <table> — unlike the plain-text version, its column alignment
+// doesn't depend on the recipient's client using a monospace font (Outlook
+// in particular renders plain text proportionally, which breaks the padded
+// column approach entirely).
+function renderBookingsHtml(rows) {
+  const cell = (text, extra = '') =>
+    `<td style="padding:4px 12px 4px 0;border-bottom:1px solid #e2e2e2;${extra}">${escapeHtml(text)}</td>`;
+  const headerCell = (text) =>
+    `<th style="padding:4px 12px 4px 0;border-bottom:2px solid #333;text-align:left;">${escapeHtml(text)}</th>`;
+  const body = rows
+    .map((row) =>
+      row === WEEK_SEPARATOR
+        ? '<tr><td colspan="3" style="padding:6px 0;border-bottom:2px solid #333;"></td></tr>'
+        : `<tr>${cell(row[0])}${cell(row[1])}${cell(row[2])}</tr>`
+    )
+    .join('');
+  return (
+    `<table style="border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-size:14px;">` +
+    `<thead><tr>${headerCell('Day')}${headerCell('Job')}${headerCell('Phase')}</tr></thead>` +
+    `<tbody>${body}</tbody></table>`
+  );
 }
 
 // {{placeholder}} substitution — deliberately simple (no loops/conditionals
@@ -138,16 +168,29 @@ function interpolate(template, values) {
 }
 
 export function formatSummaryEmail(employee, items, startDate, endDate, template = getTemplate(), includeWeekends = false) {
+  const rows = buildBookingRows(items, startDate, endDate, includeWeekends);
+
   const values = {
     first_name: employee.name.split(' ')[0],
     full_name: employee.name,
     start_date: formatDate(startDate),
     end_date: formatDate(endDate),
-    bookings: renderBookings(items, startDate, endDate, includeWeekends),
+    bookings: renderBookingsText(rows),
   };
+
+  const htmlValues = {
+    first_name: escapeHtml(values.first_name),
+    full_name: escapeHtml(values.full_name),
+    start_date: escapeHtml(values.start_date),
+    end_date: escapeHtml(values.end_date),
+    bookings: renderBookingsHtml(rows),
+  };
+
+  const htmlBody = interpolate(escapeHtml(template.body), htmlValues).replace(/\n/g, '<br>');
 
   return {
     subject: interpolate(template.subject, values),
     text: interpolate(template.body, values),
+    html: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;">${htmlBody}</div>`,
   };
 }

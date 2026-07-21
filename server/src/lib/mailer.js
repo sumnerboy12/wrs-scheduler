@@ -25,9 +25,9 @@ function getTransporter() {
   return transporter;
 }
 
-export async function sendMail({ to, subject, text }) {
+export async function sendMail({ to, subject, text, html }) {
   const address = process.env.SMTP_FROM || process.env.SMTP_USER;
   const from = process.env.SMTP_FROM_NAME ? { name: process.env.SMTP_FROM_NAME, address } : address;
   const replyTo = process.env.SMTP_REPLY_TO || undefined;
-  await getTransporter().sendMail({ from, to, subject, text, replyTo });
+  await getTransporter().sendMail({ from, to, subject, text, html, replyTo });
 }

@@ -27,21 +27,19 @@ export default function SummaryPreviewModal({ employeeName, preview, loading, er
             </div>
             <div className="field">
               <label>Message</label>
-              {/* Monospace + no wrapping (scroll instead) — the body is a
-                  plain-text email, and its bookings table is aligned with
-                  padded spaces, which only lines up in a fixed-width font. */}
-              <div
+              {/* Rendered in a sandboxed iframe (via srcDoc) rather than
+                  dangerouslySetInnerHTML — this is the actual HTML that
+                  goes out, so an iframe keeps its styles from bleeding
+                  into the surrounding app and shows exactly what most
+                  recipients (Outlook etc.) will see, table alignment
+                  included. */}
+              <iframe
+                title="Email preview"
+                srcDoc={preview.html}
+                sandbox=""
                 className="card"
-                style={{
-                  padding: '12px 14px',
-                  fontSize: 13,
-                  fontFamily: 'ui-monospace, Consolas, "SFMono-Regular", monospace',
-                  whiteSpace: 'pre',
-                  overflowX: 'auto',
-                }}
-              >
-                {preview.text}
-              </div>
+                style={{ width: '100%', height: 340, border: 'none', background: '#fff' }}
+              />
             </div>
           </>
         )}

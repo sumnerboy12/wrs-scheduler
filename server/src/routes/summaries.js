@@ -70,8 +70,8 @@ router.post('/send', requireWrite, async (req, res) => {
       continue;
     }
     try {
-      const { subject, text } = formatSummaryEmail(employee, items, start, end, template, Boolean(includeWeekends));
-      await sendMail({ to: employee.email, subject, text });
+      const { subject, text, html } = formatSummaryEmail(employee, items, start, end, template, Boolean(includeWeekends));
+      await sendMail({ to: employee.email, subject, text, html });
       results.push({ employee_id: employee.id, name: employee.name, status: 'sent' });
     } catch (e) {
       results.push({ employee_id: employee.id, name: employee.name, status: 'failed', reason: e.message });

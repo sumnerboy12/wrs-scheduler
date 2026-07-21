@@ -129,6 +129,7 @@ export interface SummaryTemplate {
 export interface SummaryPreview {
   subject: string;
   text: string;
+  html: string;
 }
 
 export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
