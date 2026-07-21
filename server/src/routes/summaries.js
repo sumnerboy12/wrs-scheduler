@@ -1,6 +1,13 @@
 import { Router } from 'express';
 import { requireWrite } from '../middleware/auth.js';
-import { buildWeeklySummaries, formatSummaryEmail, getTemplate, saveTemplate } from '../lib/weeklySummary.js';
+import {
+  buildWeeklySummaries,
+  formatSummaryEmail,
+  getTemplate,
+  saveTemplate,
+  getAutoSendConfig,
+  saveAutoSendConfig,
+} from '../lib/weeklySummary.js';
 import { sendMail, isMailConfigured } from '../lib/mailer.js';
 
 const router = Router();
@@ -37,6 +44,20 @@ router.put('/template', requireWrite, (req, res) => {
   if (!subject || !subject.trim()) return res.status(400).json({ error: 'subject is required' });
   if (!body || !body.trim()) return res.status(400).json({ error: 'body is required' });
   res.json(saveTemplate({ subject, body }));
+});
+
+router.get('/auto-send', (req, res) => {
+  res.json(getAutoSendConfig());
+});
+
+router.put('/auto-send', requireWrite, (req, res) => {
+  const { enabled, dayOfWeek, time, includeWeekends } = req.body;
+  if (typeof enabled !== 'boolean') return res.status(400).json({ error: 'enabled is required' });
+  if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
+    return res.status(400).json({ error: 'dayOfWeek must be an integer 0–6' });
+  }
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time || '')) return res.status(400).json({ error: 'time must be HH:MM' });
+  res.json(saveAutoSendConfig({ enabled, dayOfWeek, time, includeWeekends: Boolean(includeWeekends) }));
 });
 
 router.get('/preview', (req, res) => {

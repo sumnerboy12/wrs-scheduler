@@ -1,13 +1,23 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
-import type { EmployeeSummary, SendSummariesResult, SummaryPreview, SummaryTemplate } from '../types';
+import type { AutoSendConfig, EmployeeSummary, SendSummariesResult, SummaryPreview, SummaryTemplate } from '../types';
 import { addDays, formatShortDate, startOfWeek, toISODate } from '../lib/dates';
 import SummaryTemplateModal from '../components/SummaryTemplateModal';
 import SummaryPreviewModal from '../components/SummaryPreviewModal';
+import AutoSendSettingsModal from '../components/AutoSendSettingsModal';
 
 const RANGE_STORAGE_KEY = 'rostr-summaries-range';
 const INCLUDE_WEEKENDS_KEY = 'rostr-summaries-include-weekends';
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function formatTime12h(time: string): string {
+  const [h, m] = time.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
+}
 
 // Monday–Sunday of the current week.
 function thisWeekRange(): { start: string; end: string } {
@@ -68,6 +78,12 @@ export default function SummariesPage() {
   const [previewData, setPreviewData] = useState<SummaryPreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [autoSendConfig, setAutoSendConfig] = useState<AutoSendConfig | null>(null);
+  const [editingAutoSend, setEditingAutoSend] = useState(false);
+
+  useEffect(() => {
+    api.getAutoSendConfig().then(setAutoSendConfig).catch(() => {});
+  }, []);
 
   const load = () => {
     setLoading(true);
@@ -130,6 +146,18 @@ export default function SummariesPage() {
       }
     }
     setEditingTemplate(true);
+  };
+
+  const openAutoSendEditor = async () => {
+    if (!autoSendConfig) {
+      try {
+        setAutoSendConfig(await api.getAutoSendConfig());
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Failed to load auto-send settings');
+        return;
+      }
+    }
+    setEditingAutoSend(true);
   };
 
   const openPreview = async (emp: EmployeeSummary) => {
@@ -287,10 +315,22 @@ export default function SummariesPage() {
       </div>
 
       {!isReadOnly && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
-          <button className="btn btn-primary" onClick={openTemplateEditor}>
-            Edit template
-          </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button className="btn btn-primary" onClick={openTemplateEditor}>
+              Edit template
+            </button>
+            <button className="btn" onClick={openAutoSendEditor}>
+              Auto-send settings
+            </button>
+            {autoSendConfig && (
+              <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                {autoSendConfig.enabled
+                  ? `Auto-send: ON — ${DAY_NAMES[autoSendConfig.dayOfWeek]}s ${formatTime12h(autoSendConfig.time)}`
+                  : 'Auto-send: OFF'}
+              </span>
+            )}
+          </div>
           <button
             className="btn btn-primary"
             onClick={handleSend}
@@ -318,6 +358,16 @@ export default function SummariesPage() {
           loading={previewLoading}
           error={previewError}
           onClose={() => setPreviewing(null)}
+        />
+      )}
+      {editingAutoSend && autoSendConfig && (
+        <AutoSendSettingsModal
+          config={autoSendConfig}
+          onClose={() => setEditingAutoSend(false)}
+          onSave={async (data) => {
+            const saved = await api.updateAutoSendConfig(data);
+            setAutoSendConfig(saved);
+          }}
         />
       )}
     </div>

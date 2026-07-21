@@ -21,6 +21,7 @@ import phasesRouter from './routes/phases.js';
 import assignmentsRouter from './routes/assignments.js';
 import timelineRouter from './routes/timeline.js';
 import summariesRouter from './routes/summaries.js';
+import { startSummaryScheduler } from './lib/summaryScheduler.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -75,3 +76,5 @@ app.use((err, req, res, next) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Rostr server listening on http://0.0.0.0:${PORT}`);
 });
+
+startSummaryScheduler();

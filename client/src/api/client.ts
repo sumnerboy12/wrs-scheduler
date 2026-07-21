@@ -1,6 +1,7 @@
 import type {
   Assignment,
   AuthUser,
+  AutoSendConfig,
   Client,
   Employee,
   Job,
@@ -95,4 +96,7 @@ export const api = {
     request<SummaryPreview>(
       `/summaries/preview?employeeId=${employeeId}&start=${start}&end=${end}&includeWeekends=${includeWeekends}`
     ),
+  getAutoSendConfig: () => request<AutoSendConfig>('/summaries/auto-send'),
+  updateAutoSendConfig: (data: AutoSendConfig) =>
+    request<AutoSendConfig>('/summaries/auto-send', { method: 'PUT', body: JSON.stringify(data) }),
 };

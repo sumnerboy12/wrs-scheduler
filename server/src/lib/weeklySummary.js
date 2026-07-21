@@ -34,6 +34,32 @@ function formatDate(iso) {
   return `${WEEKDAY[date.getDay()]} ${d} ${MONTH[m]}`;
 }
 
+// Monday of the calendar week containing `date`.
+function startOfWeek(date) {
+  const d = new Date(date);
+  const day = d.getDay(); // 0 = Sunday
+  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+// Monday–Sunday of next calendar week — the range the auto-send job emails
+// out, mirroring the client's own "Next week" shortcut.
+export function nextWeekRange() {
+  const nextMonday = startOfWeek(new Date());
+  nextMonday.setDate(nextMonday.getDate() + 7);
+  const sunday = new Date(nextMonday);
+  sunday.setDate(sunday.getDate() + 6);
+  return { start: toISODate(nextMonday), end: toISODate(sunday) };
+}
+
+// Identifies "this calendar week" (as the ISO date of its Monday) so the
+// scheduler can tell whether it's already sent this week's batch, even if
+// it gets checked many times on send day before the next week rolls over.
+export function currentWeekKey(date = new Date()) {
+  return toISODate(startOfWeek(date));
+}
+
 // Every active employee's bookings that overlap [startDate, endDate], each
 // with the job/phase names attached — the shared query behind both the
 // preview screen and the actual send, so what an admin previews is exactly
@@ -75,6 +101,53 @@ export function saveTemplate({ subject, body }) {
   upsert.run('summary_email_subject', subject);
   upsert.run('summary_email_body', body);
   return getTemplate();
+}
+
+const DEFAULT_AUTO_SEND_DAY = 5; // Friday (Date#getDay() convention: 0 = Sunday)
+const DEFAULT_AUTO_SEND_TIME = '15:00';
+
+export function getAutoSendConfig() {
+  const rows = db
+    .prepare(
+      `SELECT key, value FROM settings WHERE key IN (
+         'summary_auto_send_enabled', 'summary_auto_send_day', 'summary_auto_send_time', 'summary_auto_send_include_weekends'
+       )`
+    )
+    .all();
+  const byKey = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  return {
+    enabled: byKey.summary_auto_send_enabled === 'true',
+    dayOfWeek: byKey.summary_auto_send_day != null ? Number(byKey.summary_auto_send_day) : DEFAULT_AUTO_SEND_DAY,
+    time: byKey.summary_auto_send_time ?? DEFAULT_AUTO_SEND_TIME,
+    includeWeekends: byKey.summary_auto_send_include_weekends === 'true',
+  };
+}
+
+export function saveAutoSendConfig({ enabled, dayOfWeek, time, includeWeekends }) {
+  const upsert = db.prepare(
+    `INSERT INTO settings (key, value) VALUES (?, ?)
+     ON CONFLICT (key) DO UPDATE SET value = excluded.value`
+  );
+  upsert.run('summary_auto_send_enabled', String(Boolean(enabled)));
+  upsert.run('summary_auto_send_day', String(dayOfWeek));
+  upsert.run('summary_auto_send_time', time);
+  upsert.run('summary_auto_send_include_weekends', String(Boolean(includeWeekends)));
+  return getAutoSendConfig();
+}
+
+// Tracks the calendar week (see currentWeekKey) the auto-send job last
+// actually ran for, so the scheduler's periodic check doesn't re-send the
+// same week's batch every time it ticks after the scheduled time.
+export function getAutoSendLastRunWeek() {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'summary_auto_send_last_run'").get();
+  return row ? row.value : null;
+}
+
+export function setAutoSendLastRunWeek(weekKey) {
+  db.prepare(
+    `INSERT INTO settings (key, value) VALUES ('summary_auto_send_last_run', ?)
+     ON CONFLICT (key) DO UPDATE SET value = excluded.value`
+  ).run(weekKey);
 }
 
 // Sentinel pushed into the rows list at each calendar-week boundary so the

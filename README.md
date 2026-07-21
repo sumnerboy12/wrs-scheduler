@@ -116,8 +116,11 @@ out and they'll need to log in again — nothing else is lost.
   (defaults to the next 7 days) and email it to them as a weekly schedule.
   The email wording itself is editable (**Edit template**, with a few
   placeholders like the employee's name and date range) and each person's
-  message can be previewed individually before anything sends. Needs email
-  set up first — see below.
+  message can be previewed individually before anything sends. **Auto-send
+  settings** can also schedule this to happen automatically every week
+  (defaults to Fridays at 3pm, off by default) — it only emails employees
+  who actually have a booking next week, and can be switched off again at
+  any time. Needs email set up first — see below.
 
 ## Emailing weekly summaries (optional)
 

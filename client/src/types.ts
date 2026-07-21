@@ -132,6 +132,13 @@ export interface SummaryPreview {
   html: string;
 }
 
+export interface AutoSendConfig {
+  enabled: boolean;
+  dayOfWeek: number; // 0 = Sunday .. 6 = Saturday, matches Date#getDay()
+  time: string; // 24-hour "HH:MM"
+  includeWeekends: boolean;
+}
+
 export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
   pipeline: 'Pipeline',
   quoted: 'Quoted',
