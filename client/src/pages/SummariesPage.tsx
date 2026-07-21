@@ -78,6 +78,8 @@ export default function SummariesPage() {
   const [previewData, setPreviewData] = useState<SummaryPreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewSending, setPreviewSending] = useState(false);
+  const [previewSendResult, setPreviewSendResult] = useState<SendSummariesResult | null>(null);
   const [autoSendConfig, setAutoSendConfig] = useState<AutoSendConfig | null>(null);
   const [editingAutoSend, setEditingAutoSend] = useState(false);
 
@@ -136,6 +138,29 @@ export default function SummariesPage() {
 
   const resultFor = (id: number) => results?.find((r) => r.employee_id === id);
 
+  // Ad-hoc single-employee re-send from inside the preview modal, independent
+  // of the checkbox selection — its result is merged into the same `results`
+  // list so the row's status column in the main table updates too.
+  const handleSendFromPreview = async () => {
+    if (!previewing) return;
+    setPreviewSending(true);
+    setPreviewSendResult(null);
+    try {
+      const { results: rowResults } = await api.sendSummaries(start, end, [previewing.id], includeWeekends);
+      setResults((prev) => [...(prev ?? []).filter((r) => r.employee_id !== previewing.id), ...rowResults]);
+      setPreviewSendResult(rowResults[0] ?? null);
+    } catch (e) {
+      setPreviewSendResult({
+        employee_id: previewing.id,
+        name: previewing.name,
+        status: 'failed',
+        reason: e instanceof Error ? e.message : 'Failed to send',
+      });
+    } finally {
+      setPreviewSending(false);
+    }
+  };
+
   const openTemplateEditor = async () => {
     if (!template) {
       try {
@@ -164,6 +189,7 @@ export default function SummariesPage() {
     setPreviewing(emp);
     setPreviewData(null);
     setPreviewError(null);
+    setPreviewSendResult(null);
     setPreviewLoading(true);
     try {
       setPreviewData(await api.previewSummary(emp.id, start, end, includeWeekends));
@@ -358,6 +384,10 @@ export default function SummariesPage() {
           loading={previewLoading}
           error={previewError}
           onClose={() => setPreviewing(null)}
+          onSend={!isReadOnly ? handleSendFromPreview : undefined}
+          sending={previewSending}
+          sendResult={previewSendResult}
+          canSend={mailConfigured && Boolean(previewing.email)}
         />
       )}
       {editingAutoSend && autoSendConfig && (

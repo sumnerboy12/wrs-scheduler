@@ -1,4 +1,4 @@
-import type { SummaryPreview } from '../types';
+import type { SendSummariesResult, SummaryPreview } from '../types';
 
 interface Props {
   employeeName: string;
@@ -6,9 +6,23 @@ interface Props {
   loading: boolean;
   error: string | null;
   onClose: () => void;
+  onSend?: () => void;
+  sending?: boolean;
+  sendResult?: SendSummariesResult | null;
+  canSend?: boolean;
 }
 
-export default function SummaryPreviewModal({ employeeName, preview, loading, error, onClose }: Props) {
+export default function SummaryPreviewModal({
+  employeeName,
+  preview,
+  loading,
+  error,
+  onClose,
+  onSend,
+  sending,
+  sendResult,
+  canSend,
+}: Props) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" style={{ width: 600 }} onClick={(e) => e.stopPropagation()}>
@@ -45,11 +59,33 @@ export default function SummaryPreviewModal({ employeeName, preview, loading, er
         )}
 
         <div className="modal-actions">
-          <div />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {sendResult && (
+              <span
+                style={{
+                  fontSize: 13,
+                  color:
+                    sendResult.status === 'sent'
+                      ? 'var(--accent)'
+                      : sendResult.status === 'skipped'
+                        ? 'var(--text-dim)'
+                        : 'var(--danger)',
+                }}
+                title={sendResult.reason}
+              >
+                {sendResult.status === 'sent' ? 'Sent' : sendResult.status === 'skipped' ? 'Skipped' : 'Failed'}
+              </span>
+            )}
+          </div>
           <div className="right">
             <button className="btn" onClick={onClose}>
               Close
             </button>
+            {onSend && (
+              <button className="btn btn-primary" onClick={onSend} disabled={!preview || !canSend || sending}>
+                {sending ? 'Sending…' : 'Send'}
+              </button>
+            )}
           </div>
         </div>
       </div>
