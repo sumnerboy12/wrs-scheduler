@@ -27,5 +27,6 @@ function getTransporter() {
 
 export async function sendMail({ to, subject, text }) {
   const from = process.env.SMTP_FROM || process.env.SMTP_USER;
-  await getTransporter().sendMail({ from, to, subject, text });
+  const replyTo = process.env.SMTP_REPLY_TO || undefined;
+  await getTransporter().sendMail({ from, to, subject, text, replyTo });
 }
