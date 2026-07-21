@@ -192,7 +192,18 @@ export default function SummariesPage() {
           <table>
             <thead>
               <tr>
-                <th></th>
+                <th>
+                  <input
+                    type="checkbox"
+                    style={{ width: 'auto' }}
+                    checked={employees.length > 0 && selected.size === employees.length}
+                    ref={(el) => {
+                      if (el) el.indeterminate = selected.size > 0 && selected.size < employees.length;
+                    }}
+                    onChange={(e) => setSelected(e.target.checked ? new Set(employees.map((emp) => emp.id)) : new Set())}
+                    disabled={isReadOnly || employees.length === 0}
+                  />
+                </th>
                 <th>Employee</th>
                 <th>Bookings this range</th>
                 <th></th>
