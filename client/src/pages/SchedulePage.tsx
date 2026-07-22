@@ -11,6 +11,7 @@ import EmployeeModal from '../components/EmployeeModal';
 import LeaveModal from '../components/LeaveModal';
 import NonBillableModal from '../components/NonBillableModal';
 import StatusFilterDropdown, { ACTIVE_STATUSES } from '../components/StatusFilterDropdown';
+import ItemTypeFilterDropdown, { ALL_ITEM_TYPES, type ScheduleItemType } from '../components/ItemTypeFilterDropdown';
 import {
   addDays,
   addMonths,
@@ -37,6 +38,7 @@ interface PersistedView {
   groupMode: GroupMode;
   preset: ZoomPreset;
   statusFilter: JobStatus[];
+  itemTypeFilter?: ScheduleItemType[];
   start: string;
   end: string;
 }
@@ -91,6 +93,7 @@ export default function SchedulePage() {
   const [preset, setPreset] = useState<ZoomPreset>(() => loadPersistedView()?.preset ?? 'month');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<JobStatus[]>(() => loadPersistedView()?.statusFilter ?? ACTIVE_STATUSES);
+  const [itemTypeFilter, setItemTypeFilter] = useState<ScheduleItemType[]>(() => loadPersistedView()?.itemTypeFilter ?? ALL_ITEM_TYPES);
   const [window, setWindow] = useState<{ start: Date; end: Date } | null>(() => {
     const persisted = loadPersistedView();
     if (persisted) return { start: new Date(persisted.start), end: new Date(persisted.end) };
@@ -177,7 +180,15 @@ export default function SchedulePage() {
       const leaveItems: TLItem[] = data.leave.map(buildLeaveItem);
       const nonBillableItems: TLItem[] = data.nonBillable.map(buildNonBillableItem);
 
-      return { groups, items: [...dateBackgroundItems, ...items, ...leaveItems, ...nonBillableItems] };
+      return {
+        groups,
+        items: [
+          ...dateBackgroundItems,
+          ...(itemTypeFilter.includes('jobs') ? items : []),
+          ...(itemTypeFilter.includes('leave') ? leaveItems : []),
+          ...(itemTypeFilter.includes('nonBillable') ? nonBillableItems : []),
+        ],
+      };
     }
 
     const groups: TLGroup[] = [];
@@ -244,7 +255,7 @@ export default function SchedulePage() {
 
         // Show any estimate as its own placeholder bar alongside whatever
         // real staff bars this phase already has.
-        if (phase.estimated_staff) {
+        if (phase.estimated_staff && itemTypeFilter.includes('jobs')) {
           items.push({
             id: `phase-estimate-${phase.id}`,
             group: `phase-${phase.id}`,
@@ -261,7 +272,7 @@ export default function SchedulePage() {
 
       // A consolidated bar on the job's own (parent) row, spanning every phase.
       // This stays visible even when the job's phase rows are collapsed.
-      if (jobPhases.length > 0) {
+      if (jobPhases.length > 0 && itemTypeFilter.includes('jobs')) {
         const minStart = jobPhases.reduce((min, p) => (p.start_date < min ? p.start_date : min), jobPhases[0].start_date);
         const maxEnd = jobPhases.reduce((max, p) => (p.end_date > max ? p.end_date : max), jobPhases[0].end_date);
 
@@ -283,20 +294,22 @@ export default function SchedulePage() {
       }
     }
 
-    for (const a of visibleAssignments) {
-      const employee = employeesById.get(a.employee_id);
-      const job = jobsById.get(a.job_id!);
-      // Colour by employee, not job — the job's colour already carries the
-      // phase rows and summary bar, so tinting staff bars by employee is
-      // what lets you tell who's on a phase without opening it.
-      const item = buildItem(a, `phase-${a.phase_id}`, employee ? escapeHtml(employee.name) : '', job, employee?.color ?? jobColorFor(job));
-      item.className += ' staff-bar';
-      items.push(item);
+    if (itemTypeFilter.includes('jobs')) {
+      for (const a of visibleAssignments) {
+        const employee = employeesById.get(a.employee_id);
+        const job = jobsById.get(a.job_id!);
+        // Colour by employee, not job — the job's colour already carries the
+        // phase rows and summary bar, so tinting staff bars by employee is
+        // what lets you tell who's on a phase without opening it.
+        const item = buildItem(a, `phase-${a.phase_id}`, employee ? escapeHtml(employee.name) : '', job, employee?.color ?? jobColorFor(job));
+        item.className += ' staff-bar';
+        items.push(item);
+      }
     }
 
     return { groups, items };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, groupMode, visibleAssignments, jobsById, employeesById, statusFilter, search, capacityOverflowItems, collapsedJobIds]);
+  }, [data, groupMode, visibleAssignments, jobsById, employeesById, statusFilter, itemTypeFilter, search, capacityOverflowItems, collapsedJobIds]);
 
   const applyPreset = (p: ZoomPreset) => {
     setPreset(p);
@@ -310,16 +323,16 @@ export default function SchedulePage() {
 
   const handleWindowChange = (start: Date, end: Date) => {
     centerRef.current = new Date((start.getTime() + end.getTime()) / 2);
-    savePersistedView({ groupMode, preset, statusFilter, start: start.toISOString(), end: end.toISOString() });
+    savePersistedView({ groupMode, preset, statusFilter, itemTypeFilter, start: start.toISOString(), end: end.toISOString() });
   };
 
   // Persist immediately when a toggle changes, without waiting for the
   // timeline to also report a range change.
   useEffect(() => {
     if (!window) return;
-    savePersistedView({ groupMode, preset, statusFilter, start: window.start.toISOString(), end: window.end.toISOString() });
+    savePersistedView({ groupMode, preset, statusFilter, itemTypeFilter, start: window.start.toISOString(), end: window.end.toISOString() });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupMode, preset, statusFilter]);
+  }, [groupMode, preset, statusFilter, itemTypeFilter]);
 
   useEffect(() => {
     saveCollapsedJobIds(collapsedJobIds);
@@ -473,6 +486,7 @@ export default function SchedulePage() {
         />
 
         <StatusFilterDropdown value={statusFilter} onChange={setStatusFilter} />
+        <ItemTypeFilterDropdown value={itemTypeFilter} onChange={setItemTypeFilter} />
 
         {!isReadOnly && (
           <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
