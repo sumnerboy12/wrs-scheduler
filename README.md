@@ -102,27 +102,55 @@ out and they'll need to log in again — nothing else is lost.
 ## How it works
 
 - **Schedule** — the main Gantt/resourcing view. Toggle between grouping
-  by employee or by job, and switch between Quarter/Month/Week/Day zoom levels
-  for a high-level overview or a detailed drill-down. Double-click an empty
-  slot to create an assignment, double-click an existing bar to edit it, and
-  drag bars to reschedule or reassign. Employees booked over 100% on
-  overlapping dates are outlined in red.
+  by employee or by job, switch between Quarter/Month/Week/Day zoom levels,
+  and filter by job status or a search term (job name/code/client). A second
+  filter lets you show/hide **Jobs**, **Leave** and **Non-billable** bars
+  independently, e.g. to see just who's on leave without job bookings
+  cluttering the view. Double-click an empty slot to create an assignment,
+  double-click an existing bar (or a job/phase/employee label) to edit it,
+  and drag bars to reschedule or reassign. Jobs, leave and non-billable time
+  all count against the same 100%-per-day capacity — anyone over that on
+  overlapping dates is outlined in red, and any day where estimated +
+  assigned staff would exceed available headcount (accounting for leave and
+  non-billable time) is shaded amber. A phase marked **Complete** (see Jobs,
+  below) is left out of the Schedule, and out of these calculations,
+  entirely. In By Job mode, use the collapse/expand-all buttons (top-left of
+  the timeline) to fold every job down to its summary row at once.
 - **Jobs** — manage jobs (including pipeline/quoted jobs you're pricing) and
-  break each one into phases (e.g. Tear-off, Install, Flashing), each with its
-  own dates. Link a job to a client to inherit that client's colour.
+  break each one into phases (e.g. Tear-off, Install, Flashing), each with
+  its own dates, an optional staff estimate, and an optional supervisor (see
+  Summaries, below). **Import** lets you paste a list from a spreadsheet —
+  for jobs, or for a selected job's phases, where only a phase name is
+  strictly required: set a default start/end date in the import screen and
+  any row without its own dates uses that instead. Tick **Complete** on a
+  phase once it's finished — it then drops off the Schedule, is left out of
+  double-booking/over-capacity calculations, and is no longer included in
+  summary emails, while still showing (dimmed) in this phase list for
+  reference. Link a job to a client to inherit that client's colour.
 - **Clients** — manage your client list and each one's colour — a job's
   colour on the Schedule always comes from its linked client, not the job
   itself.
-- **Employees** — manage your staff list.
-- **Summaries** — preview each active employee's bookings for a date range
-  (defaults to the next 7 days) and email it to them as a weekly schedule.
-  The email wording itself is editable (**Edit template**, with a few
-  placeholders like the employee's name and date range) and each person's
-  message can be previewed individually before anything sends. **Auto-send
-  settings** can also schedule this to happen automatically every week
-  (defaults to Fridays at 3pm, off by default) — it only emails employees
-  who actually have a booking next week, and can be switched off again at
-  any time. Needs email set up first — see below.
+- **Employees** — manage your staff list; **Import** works here too.
+- **Leave** — added from the Schedule's **+ Add Leave** (sick/annual/ACC/
+  other, one employee at a time), shown as its own bar and counted against
+  the same capacity as job bookings. Can optionally be kept in sync
+  automatically from an external payroll/HR system's calendar feed instead
+  of entering it by hand — see below.
+- **Non-billable time** — training, admin, meetings, or other non-chargeable
+  work, added from the Schedule's **+ Add Non-billable** (several employees
+  at once, if a whole team's off the tools for the same reason), also
+  counted against the same capacity.
+- **Summaries** — two tabs. **Employees**: preview each active employee's
+  upcoming bookings and leave for a date range (defaults to the next 7 days)
+  and email it to them as a weekly schedule. **Supervisors**: the same idea
+  per job — emails each job's supervisor (set on the job itself, under Jobs)
+  a day-by-day breakdown of who's booked on which phase. Both tabs let you
+  edit the email wording (**Edit template**, with placeholders like the
+  recipient's name and date range), preview or send an individual message
+  first, and set up **Auto-send** to repeat it automatically every week
+  (defaults to Fridays at 3pm, off by default; only emails someone who
+  actually has something to report; can be switched off again at any time).
+  Needs email set up first — see below.
 
 ## Emailing weekly summaries (optional)
 
@@ -141,6 +169,36 @@ works for previewing — sending is just disabled with a clear message.
 - **Docker install**: create a `.env` file next to `docker-compose.yml` with
   the same variables — `docker compose up -d --build` picks it up
   automatically (see the comment in `docker-compose.yml`).
+
+## Syncing leave from an external calendar (optional)
+
+Rostr can periodically pull approved leave in from an external payroll/HR
+system and keep matching **Leave** records in sync automatically — created,
+updated, or removed as requests change upstream — so you don't have to
+double-enter leave that's already tracked somewhere else.
+
+This works with any system that can publish leave as an iCalendar (.ics)
+feed URL (what's actually been tested is Lentune's feed, but nothing about
+it is specific to Lentune). Matching is by employee **name** (exact,
+case-insensitive) — the feed carries no email or id — so a name Rostr can't
+match to an employee is simply skipped rather than guessed at (check the
+server's console/log output for a one-line summary, including any
+unmatched names, each time it runs). Only leave that's already approved (or
+processed by payroll) is imported; draft/submitted requests are left out
+since they aren't a commitment yet.
+
+- **Windows PC install**: in `server/.env`, set `LEAVE_CALENDAR_URL` to your
+  feed's URL (treat it like a password — it usually embeds an access token
+  in the link itself). `LEAVE_SYNC_INTERVAL_MINUTES` controls how often it
+  re-checks (defaults to 60). Restart the app after saving.
+- **Docker install**: set the same two variables in the `.env` file next to
+  `docker-compose.yml`.
+
+A synced leave record can still be edited or deleted by hand in Rostr like
+any other. Editing one marks it as manually corrected, so future syncs
+recognise it and leave it alone rather than overwriting your correction.
+Deleting one just removes it — if the upstream request is still there next
+time the sync runs, it'll come back.
 
 ## Signing in with SSO (optional)
 
