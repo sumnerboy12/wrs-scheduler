@@ -84,5 +84,11 @@ if (!userColumns.includes('email')) {
   db.exec('ALTER TABLE users ADD COLUMN email TEXT');
 }
 
+// Lets an admin restrict an account to SSO-only sign-in (password login
+// refused even if correct) — see lib/oidc.js and routes/auth.js.
+if (!userColumns.includes('sso_only')) {
+  db.exec('ALTER TABLE users ADD COLUMN sso_only INTEGER NOT NULL DEFAULT 0');
+}
+
 export { dataDir };
 export default db;

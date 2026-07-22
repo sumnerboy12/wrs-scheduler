@@ -16,6 +16,7 @@ function publicUser(user) {
     role: user.role,
     active: !!user.active,
     must_change_password: !!user.must_change_password,
+    sso_only: !!user.sso_only,
     created_at: user.created_at,
   };
 }
@@ -30,17 +31,19 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { username, password, role, email } = req.body;
+  const { username, password, role, email, sso_only } = req.body;
   if (!username || !username.trim()) return res.status(400).json({ error: 'Username is required' });
   if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
   if (role != null && !ROLES.includes(role)) return res.status(400).json({ error: 'Invalid role' });
+  const nextEmail = email?.trim() || null;
+  if (sso_only && !nextEmail) return res.status(400).json({ error: 'SSO-only accounts need an email set to sign in with' });
 
   const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username.trim());
   if (existing) return res.status(400).json({ error: 'That username is already taken' });
 
   const result = db
-    .prepare('INSERT INTO users (username, password_hash, role, email, must_change_password) VALUES (?, ?, ?, ?, 1)')
-    .run(username.trim(), hashPassword(password), role || 'editor', email?.trim() || null);
+    .prepare('INSERT INTO users (username, password_hash, role, email, sso_only, must_change_password) VALUES (?, ?, ?, ?, ?, 1)')
+    .run(username.trim(), hashPassword(password), role || 'editor', nextEmail, sso_only ? 1 : 0);
 
   const row = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(publicUser(row));
@@ -51,21 +54,24 @@ router.put('/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'not found' });
 
-  const { role, active, email } = req.body;
+  const { role, active, email, sso_only } = req.body;
   if (role != null && !ROLES.includes(role)) return res.status(400).json({ error: 'Invalid role' });
   const nextRole = role ?? existing.role;
   const nextActive = active != null ? (active ? 1 : 0) : existing.active;
   const nextEmail = email !== undefined ? email?.trim() || null : existing.email;
+  const nextSsoOnly = sso_only != null ? (sso_only ? 1 : 0) : existing.sso_only;
+  if (nextSsoOnly && !nextEmail) return res.status(400).json({ error: 'SSO-only accounts need an email set to sign in with' });
 
   const losingAdminCoverage = existing.role === 'admin' && existing.active && (nextRole !== 'admin' || !nextActive);
   if (losingAdminCoverage && countOtherActiveAdmins(id) === 0) {
     return res.status(400).json({ error: 'Cannot remove the last admin' });
   }
 
-  db.prepare(`UPDATE users SET role = ?, active = ?, email = ?, updated_at = datetime('now') WHERE id = ?`).run(
+  db.prepare(`UPDATE users SET role = ?, active = ?, email = ?, sso_only = ?, updated_at = datetime('now') WHERE id = ?`).run(
     nextRole,
     nextActive,
     nextEmail,
+    nextSsoOnly,
     id
   );
 

@@ -57,7 +57,7 @@ export default function UsersPage() {
                   <td style={{ color: u.email ? undefined : 'var(--text-dim)' }}>{u.email || '—'}</td>
                   <td style={{ textTransform: 'capitalize' }}>{u.role}</td>
                   <td>{u.active ? 'Active' : 'Inactive'}</td>
-                  <td>{u.must_change_password ? 'Must change on next login' : 'Set'}</td>
+                  <td>{u.sso_only ? 'SSO only' : u.must_change_password ? 'Must change on next login' : 'Set'}</td>
                   <td style={{ display: 'flex', gap: 8 }}>
                     <button className="btn" onClick={() => setResetting(u)}>
                       Reset password
@@ -86,7 +86,7 @@ export default function UsersPage() {
           currentUserId={user.id}
           onClose={() => setShowAdd(false)}
           onSave={async (data) => {
-            await api.createUser(data as { username: string; password: string; role: UserRole; email: string | null });
+            await api.createUser(data as { username: string; password: string; role: UserRole; email: string | null; sso_only: boolean });
             load();
           }}
         />
@@ -97,7 +97,10 @@ export default function UsersPage() {
           currentUserId={user.id}
           onClose={() => setEditing(null)}
           onSave={async (data) => {
-            await api.updateUser(editing.id, data as Partial<{ role: UserRole; active: boolean; email: string | null }>);
+            await api.updateUser(
+              editing.id,
+              data as Partial<{ role: UserRole; active: boolean; email: string | null; sso_only: boolean }>
+            );
             load();
           }}
           onDelete={async (id) => {

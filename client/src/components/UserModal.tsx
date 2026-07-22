@@ -6,7 +6,9 @@ interface Props {
   currentUserId: number;
   onClose: () => void;
   onSave: (
-    data: { username: string; password: string; role: UserRole; email: string | null } | { role: UserRole; active: boolean; email: string | null }
+    data:
+      | { username: string; password: string; role: UserRole; email: string | null; sso_only: boolean }
+      | { role: UserRole; active: boolean; email: string | null; sso_only: boolean }
   ) => Promise<void>;
   onDelete?: (id: number) => Promise<void>;
 }
@@ -18,6 +20,7 @@ export default function UserModal({ user, currentUserId, onClose, onSave, onDele
   const [email, setEmail] = useState(user?.email ?? '');
   const [role, setRole] = useState<UserRole>(user?.role ?? 'editor');
   const [active, setActive] = useState(user?.active ?? true);
+  const [ssoOnly, setSsoOnly] = useState(user?.sso_only ?? false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,11 +29,16 @@ export default function UserModal({ user, currentUserId, onClose, onSave, onDele
       if (!username.trim()) return setError('Username is required');
       if (password.length < 8) return setError('Password must be at least 8 characters');
     }
+    if (ssoOnly && !email.trim()) return setError('SSO-only accounts need an email set to sign in with');
     setSaving(true);
     setError(null);
     try {
       const emailValue = email.trim() || null;
-      await onSave(user ? { role, active, email: emailValue } : { username: username.trim(), password, role, email: emailValue });
+      await onSave(
+        user
+          ? { role, active, email: emailValue, sso_only: ssoOnly }
+          : { username: username.trim(), password, role, email: emailValue, sso_only: ssoOnly }
+      );
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save');
@@ -85,6 +93,26 @@ export default function UserModal({ user, currentUserId, onClose, onSave, onDele
             Only needed to enable "Sign in with SSO" for this account — must match their identity provider email.
           </div>
         </div>
+
+        <label
+          style={{
+            fontSize: 13,
+            display: 'flex',
+            gap: 6,
+            alignItems: 'center',
+            marginBottom: 12,
+            opacity: email.trim() ? 1 : 0.5,
+          }}
+        >
+          <input
+            type="checkbox"
+            style={{ width: 'auto' }}
+            checked={ssoOnly}
+            onChange={(e) => setSsoOnly(e.target.checked)}
+            disabled={!email.trim()}
+          />
+          SSO only — disable password sign-in for this account
+        </label>
 
         <div className="field" style={{ marginBottom: user ? 8 : 12 }}>
           <label>Role</label>

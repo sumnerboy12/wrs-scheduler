@@ -92,6 +92,7 @@ export interface ManagedUser {
   role: UserRole;
   active: boolean;
   must_change_password: boolean;
+  sso_only: boolean;
   created_at: string;
 }
 

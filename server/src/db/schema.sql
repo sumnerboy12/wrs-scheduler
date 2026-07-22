@@ -73,6 +73,10 @@ CREATE TABLE IF NOT EXISTS users (
   role TEXT NOT NULL DEFAULT 'editor' CHECK (role IN ('admin', 'editor', 'readonly')),
   active INTEGER NOT NULL DEFAULT 1,
   must_change_password INTEGER NOT NULL DEFAULT 0,
+  -- When set, this account can only sign in via SSO (see lib/oidc.js) —
+  -- the password_hash still exists (kept simple, always required at
+  -- creation) but /auth/login refuses to check it while this is on.
+  sso_only INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

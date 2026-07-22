@@ -20,7 +20,9 @@ router.post('/login', (req, res) => {
   if (!username || !password) return res.status(400).json({ error: 'username and password are required' });
 
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(String(username).trim());
-  if (!user || !user.active || !verifyPassword(password, user.password_hash)) {
+  if (!user || !user.active) return res.status(401).json({ error: 'Invalid username or password' });
+  if (user.sso_only) return res.status(401).json({ error: 'This account can only sign in via SSO — use "Sign in with SSO" below.' });
+  if (!verifyPassword(password, user.password_hash)) {
     return res.status(401).json({ error: 'Invalid username or password' });
   }
 

@@ -46,9 +46,9 @@ export const api = {
   getOidcStatus: () => request<OidcStatus>('/auth/oidc/status'),
 
   getUsers: () => request<ManagedUser[]>('/users'),
-  createUser: (data: { username: string; password: string; role: UserRole; email?: string | null }) =>
+  createUser: (data: { username: string; password: string; role: UserRole; email?: string | null; sso_only?: boolean }) =>
     request<ManagedUser>('/users', { method: 'POST', body: JSON.stringify(data) }),
-  updateUser: (id: number, data: Partial<{ role: UserRole; active: boolean; email: string | null }>) =>
+  updateUser: (id: number, data: Partial<{ role: UserRole; active: boolean; email: string | null; sso_only: boolean }>) =>
     request<ManagedUser>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   resetUserPassword: (id: number, password: string) =>
     request<void>(`/users/${id}/reset-password`, { method: 'POST', body: JSON.stringify({ password }) }),
