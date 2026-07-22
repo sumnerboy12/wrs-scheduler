@@ -15,7 +15,9 @@ function Gate() {
 
   if (loading) return <div style={{ padding: 20 }}>Loading…</div>;
   if (!user) return <LoginPage />;
-  if (user.must_change_password) {
+  // SSO-only accounts never have a password of their own to change — the
+  // "set a new password" flag only makes sense for the password-login path.
+  if (user.must_change_password && !user.sso_only) {
     return <ChangePasswordModal mandatory onClose={() => {}} onChanged={refresh} />;
   }
 

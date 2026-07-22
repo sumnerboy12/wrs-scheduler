@@ -12,6 +12,7 @@ function publicUser(user) {
     username: user.username,
     role: user.role,
     must_change_password: !!user.must_change_password,
+    sso_only: !!user.sso_only,
   };
 }
 

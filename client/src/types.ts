@@ -83,6 +83,7 @@ export interface AuthUser {
   username: string;
   role: UserRole;
   must_change_password: boolean;
+  sso_only: boolean;
 }
 
 export interface ManagedUser {

@@ -60,9 +60,11 @@ export default function Layout() {
         </nav>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center', fontSize: 13, color: 'var(--text-dim)' }}>
           <span>{user?.username}</span>
-          <button className="btn" onClick={() => setChangingPassword(true)}>
-            Change password
-          </button>
+          {!user?.sso_only && (
+            <button className="btn" onClick={() => setChangingPassword(true)}>
+              Change password
+            </button>
+          )}
           <button className="btn" onClick={() => logout()}>
             Log out
           </button>
