@@ -14,8 +14,11 @@ router.get('/', (req, res) => {
   } else {
     rows = db.prepare('SELECT * FROM assignments ORDER BY start_date').all();
   }
-  const conflictIds = computeConflictIds(rows);
-  res.json(rows.map((r) => ({ ...r, conflict: conflictIds.has(r.id) })));
+  const leave = employee_id
+    ? db.prepare('SELECT * FROM leave_periods WHERE employee_id = ?').all(Number(employee_id))
+    : db.prepare('SELECT * FROM leave_periods').all();
+  const { assignmentConflictIds } = computeConflictIds(rows, leave);
+  res.json(rows.map((r) => ({ ...r, conflict: assignmentConflictIds.has(r.id) })));
 });
 
 router.post('/', requireWrite, (req, res) => {

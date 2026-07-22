@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
-import type { Assignment, Employee, Job, JobStatus, Phase, TimelinePayload } from '../types';
-import { JOB_STATUS_LABELS } from '../types';
+import type { Assignment, Employee, Job, JobStatus, LeavePeriod, Phase, TimelinePayload } from '../types';
+import { JOB_STATUS_LABELS, LEAVE_TYPE_LABELS } from '../types';
 import TimelineView, { type TimelineViewHandle, type TLGroup, type TLItem } from '../components/TimelineView';
 import AssignmentModal from '../components/AssignmentModal';
 import JobModal from '../components/JobModal';
 import PhaseModal from '../components/PhaseModal';
 import EmployeeModal from '../components/EmployeeModal';
+import LeaveModal from '../components/LeaveModal';
 import StatusFilterDropdown, { ACTIVE_STATUSES } from '../components/StatusFilterDropdown';
 import {
   addDays,
@@ -100,6 +101,8 @@ export default function SchedulePage() {
   const [editingPhase, setEditingPhase] = useState<Phase | null>(null);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [creating, setCreating] = useState<{ employeeId?: number; jobId?: number; phaseId?: number; date?: string } | null>(null);
+  const [editingLeave, setEditingLeave] = useState<LeavePeriod | null>(null);
+  const [creatingLeave, setCreatingLeave] = useState<{ employeeId?: number; date?: string } | null>(null);
 
   const centerRef = useRef(window ? new Date((window.start.getTime() + window.end.getTime()) / 2) : new Date());
   const timelineViewRef = useRef<TimelineViewHandle>(null);
@@ -168,7 +171,9 @@ export default function SchedulePage() {
         return item;
       });
 
-      return { groups, items: [...dateBackgroundItems, ...items] };
+      const leaveItems: TLItem[] = data.leave.map(buildLeaveItem);
+
+      return { groups, items: [...dateBackgroundItems, ...items, ...leaveItems] };
     }
 
     const groups: TLGroup[] = [];
@@ -336,6 +341,10 @@ export default function SchedulePage() {
         const jobId = Number(itemId.replace('job-summary-', ''));
         const job = data?.jobs.find((j) => j.id === jobId);
         if (job) setEditingJob(job);
+      } else if (itemId.startsWith('leave-')) {
+        const leaveId = Number(itemId.replace('leave-', ''));
+        const leave = data?.leave.find((l) => l.id === leaveId);
+        if (leave) setEditingLeave(leave);
       }
       return;
     }
@@ -458,9 +467,14 @@ export default function SchedulePage() {
         <StatusFilterDropdown value={statusFilter} onChange={setStatusFilter} />
 
         {!isReadOnly && (
-          <button className="btn btn-primary" style={{ marginLeft: 'auto' }} onClick={() => setCreating({})}>
-            + Add Assignment
-          </button>
+          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+            <button className="btn" onClick={() => setCreatingLeave({})}>
+              + Add Leave
+            </button>
+            <button className="btn btn-primary" onClick={() => setCreating({})}>
+              + Add Assignment
+            </button>
+          </div>
         )}
       </div>
 
@@ -469,9 +483,18 @@ export default function SchedulePage() {
           <span className="legend-swatch" style={{ background: 'transparent', border: '1px dashed #6b7690' }} />
           Pipeline / Quoted
         </span>
+        {groupMode === 'employee' && (
+          <span>
+            <span
+              className="legend-swatch"
+              style={{ background: 'repeating-linear-gradient(45deg, #4a5468, #4a5468 3px, #5b6680 3px, #5b6680 6px)' }}
+            />
+            Leave
+          </span>
+        )}
         <span>
           <span className="legend-swatch" style={{ background: 'transparent', boxShadow: '0 0 0 2px var(--danger)' }} />
-          Employee over allocated
+          Employee double-booked or on leave
         </span>
         <span>
           <span className="legend-swatch" style={{ background: 'rgba(250, 176, 5, 0.6)' }} />
@@ -571,6 +594,35 @@ export default function SchedulePage() {
           onClose={() => setCreating(null)}
           onSave={async (patch) => {
             await api.createAssignment(patch);
+            load();
+          }}
+        />
+      )}
+      {editingLeave && (
+        <LeaveModal
+          employees={activeEmployees}
+          leave={editingLeave}
+          onClose={() => setEditingLeave(null)}
+          onSave={async (patch) => {
+            await api.updateLeave(editingLeave.id, patch);
+            load();
+          }}
+          onDelete={async (id) => {
+            await api.deleteLeave(id);
+            load();
+          }}
+          readOnly={isReadOnly}
+        />
+      )}
+      {creatingLeave && (
+        <LeaveModal
+          employees={activeEmployees}
+          leave={null}
+          defaultEmployeeId={creatingLeave.employeeId}
+          defaultDate={creatingLeave.date}
+          onClose={() => setCreatingLeave(null)}
+          onSave={async (patch) => {
+            await api.createLeave(patch);
             load();
           }}
         />
@@ -675,6 +727,23 @@ function computeJobPeakEstimatedStaff(jobPhases: Phase[]): number {
   return peak;
 }
 
+function buildLeaveItem(l: LeavePeriod): TLItem {
+  const classes = ['tl-item', 'leave-bar'];
+  if (l.conflict) classes.push('conflict');
+  const label = LEAVE_TYPE_LABELS[l.type];
+
+  return {
+    id: `leave-${l.id}`,
+    group: `emp-${l.employee_id}`,
+    content: label,
+    start: parseISODateLocal(l.start_date),
+    end: parseISODateLocal(isoDatePlusOne(l.end_date)),
+    className: classes.join(' '),
+    title: `${label} leave · ${formatShortDate(l.start_date)} – ${formatShortDate(l.end_date)}${l.conflict ? ' · BOOKED WHILE ON LEAVE' : ''}`,
+    editable: false,
+  };
+}
+
 function buildItem(a: Assignment, group: string, content: string, job: Job | undefined, color: string): TLItem {
   const classes = ['tl-item'];
   if (job && TENTATIVE_STATUSES.has(job.status)) classes.push('tentative');
@@ -738,26 +807,36 @@ function buildDateBackgroundItems(): TLItem[] {
   return items;
 }
 
-// Flags any day where demand for staff exceeds total active headcount.
+// Flags any day where demand for staff exceeds available headcount.
 // Demand = every real assignee that day (each employee counted once,
 // globally, regardless of allocation%) plus, per phase with an estimate,
 // only the *shortfall* above that phase's own real allocation — an
 // estimate of 3 with 2 people already for-real assigned to that phase
 // contributes 1 more, not 3 more (the 2 are already in the real count).
-// Answers "could we actually staff this if every estimate panned out,"
+// Available headcount is total active staff minus anyone on leave that
+// day — someone on leave isn't there to cover an estimate even if
+// nothing's technically booked against them. Answers "could we actually
+// staff this if every estimate panned out, with who's actually around,"
 // not just "is any one person over-booked."
 function buildCapacityOverflowItems(data: TimelinePayload): TLItem[] {
-  const totalEmployees = data.employees.filter((e) => e.active).length;
+  const activeEmployeeIds = new Set(data.employees.filter((e) => e.active).map((e) => e.id));
+  const totalEmployees = activeEmployeeIds.size;
   if (totalEmployees === 0) return [];
 
   const { rangeStart, rangeEnd } = getScheduleBackgroundRange();
   const estimatedPhases = data.phases.filter((p) => p.estimated_staff);
+  const activeLeave = data.leave.filter((l) => activeEmployeeIds.has(l.employee_id));
 
   const overflowDays: string[] = [];
   for (let d = new Date(rangeStart); d < rangeEnd; d = addDays(d, 1)) {
     const iso = toISODate(d);
     const activeAssignments = data.assignments.filter((a) => a.start_date <= iso && a.end_date >= iso);
     const realCount = new Set(activeAssignments.map((a) => a.employee_id)).size;
+
+    const onLeaveCount = new Set(
+      activeLeave.filter((l) => l.start_date <= iso && l.end_date >= iso).map((l) => l.employee_id),
+    ).size;
+    const availableEmployees = totalEmployees - onLeaveCount;
 
     let extraEstimated = 0;
     for (const phase of estimatedPhases) {
@@ -768,7 +847,7 @@ function buildCapacityOverflowItems(data: TimelinePayload): TLItem[] {
       extraEstimated += Math.max(0, (phase.estimated_staff ?? 0) - phaseActualCount);
     }
 
-    if (realCount + extraEstimated > totalEmployees) overflowDays.push(iso);
+    if (realCount + extraEstimated > availableEmployees) overflowDays.push(iso);
   }
 
   // Merge consecutive overflow days into single spans rather than one
@@ -790,7 +869,7 @@ function buildCapacityOverflowItems(data: TimelinePayload): TLItem[] {
       end: addDays(parseISODateLocal(overflowDays[j]), 1),
       type: 'background',
       className: 'tl-overcapacity',
-      title: 'Estimated + assigned staff exceed total headcount on this date',
+      title: 'Estimated + assigned staff exceed available headcount (accounting for leave) on this date',
     });
     i = j + 1;
   }

@@ -66,6 +66,19 @@ CREATE TABLE IF NOT EXISTS assignments (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- An employee being unavailable — separate from assignments (which are
+-- always against a job's phase) since leave isn't tied to any job.
+CREATE TABLE IF NOT EXISTS leave_periods (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+  type TEXT NOT NULL DEFAULT 'annual' CHECK (type IN ('sick', 'annual', 'acc', 'other')),
+  start_date TEXT NOT NULL,
+  end_date TEXT NOT NULL,
+  notes TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT NOT NULL UNIQUE,
@@ -92,3 +105,5 @@ CREATE INDEX IF NOT EXISTS idx_phases_job ON phases(job_id);
 CREATE INDEX IF NOT EXISTS idx_assignments_phase ON assignments(phase_id);
 CREATE INDEX IF NOT EXISTS idx_assignments_employee ON assignments(employee_id);
 CREATE INDEX IF NOT EXISTS idx_assignments_dates ON assignments(start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_leave_periods_employee ON leave_periods(employee_id);
+CREATE INDEX IF NOT EXISTS idx_leave_periods_dates ON leave_periods(start_date, end_date);

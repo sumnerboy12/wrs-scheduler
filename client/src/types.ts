@@ -68,12 +68,32 @@ export interface Assignment {
   phase_end?: string;
 }
 
+export type LeaveType = 'sick' | 'annual' | 'acc' | 'other';
+
+export interface LeavePeriod {
+  id: number;
+  employee_id: number;
+  type: LeaveType;
+  start_date: string;
+  end_date: string;
+  notes: string | null;
+  conflict?: boolean;
+}
+
+export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
+  sick: 'Sick',
+  annual: 'Annual',
+  acc: 'ACC',
+  other: 'Other',
+};
+
 export interface TimelinePayload {
   employees: Employee[];
   jobs: Job[];
   phases: Phase[];
   assignments: Assignment[];
   clients: Client[];
+  leave: LeavePeriod[];
 }
 
 export type UserRole = 'admin' | 'editor' | 'readonly';
@@ -110,11 +130,18 @@ export interface SummaryItem {
   allocation_pct: number;
 }
 
+export interface SummaryLeaveItem {
+  type: LeaveType;
+  start_date: string;
+  end_date: string;
+}
+
 export interface EmployeeSummary {
   id: number;
   name: string;
   email: string | null;
   items: SummaryItem[];
+  leave: SummaryLeaveItem[];
 }
 
 export interface SummariesPayload {

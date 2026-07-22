@@ -7,6 +7,7 @@ import type {
   Job,
   JobSummariesPayload,
   JobWithPhases,
+  LeavePeriod,
   ManagedUser,
   OidcStatus,
   Phase,
@@ -85,6 +86,12 @@ export const api = {
   updateAssignment: (id: number, data: Partial<Assignment>) =>
     request<Assignment>(`/assignments/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteAssignment: (id: number) => request<void>(`/assignments/${id}`, { method: 'DELETE' }),
+
+  getLeave: () => request<LeavePeriod[]>('/leave'),
+  createLeave: (data: Partial<LeavePeriod>) => request<LeavePeriod>('/leave', { method: 'POST', body: JSON.stringify(data) }),
+  updateLeave: (id: number, data: Partial<LeavePeriod>) =>
+    request<LeavePeriod>(`/leave/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteLeave: (id: number) => request<void>(`/leave/${id}`, { method: 'DELETE' }),
 
   getSummaries: (start: string, end: string) =>
     request<SummariesPayload>(`/summaries?start=${start}&end=${end}`),

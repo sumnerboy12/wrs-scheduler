@@ -11,6 +11,8 @@ import {
 
 export { nextWeekRange, currentWeekKey } from './emailDates.js';
 
+const LEAVE_TYPE_LABELS = { sick: 'Sick', annual: 'Annual', acc: 'ACC', other: 'Other' };
+
 export const DEFAULT_SUBJECT_TEMPLATE = 'Your Rostr schedule: {{start_date}} – {{end_date}}';
 export const DEFAULT_BODY_TEMPLATE = `Hi {{first_name}},
 
@@ -20,10 +22,9 @@ Here's what you're booked on for {{start_date}} – {{end_date}}:
 
 — Rostr`;
 
-// Every active employee's bookings that overlap [startDate, endDate], each
-// with the job/phase names attached — the shared query behind both the
-// preview screen and the actual send, so what an admin previews is exactly
-// what goes out.
+// Every active employee's bookings and leave that overlap [startDate,
+// endDate] — the shared query behind both the preview screen and the
+// actual send, so what an admin previews is exactly what goes out.
 export function buildWeeklySummaries(startDate, endDate) {
   const employees = db.prepare('SELECT * FROM employees WHERE active = 1 ORDER BY name').all();
 
@@ -35,10 +36,14 @@ export function buildWeeklySummaries(startDate, endDate) {
      WHERE a.employee_id = ? AND a.start_date <= ? AND a.end_date >= ?
      ORDER BY a.start_date`
   );
+  const leaveStmt = db.prepare(
+    `SELECT * FROM leave_periods WHERE employee_id = ? AND start_date <= ? AND end_date >= ? ORDER BY start_date`
+  );
 
   return employees.map((employee) => {
     const items = assignmentStmt.all(employee.id, endDate, startDate);
-    return { employee, items };
+    const leave = leaveStmt.all(employee.id, endDate, startDate);
+    return { employee, items, leave };
   });
 }
 
@@ -115,24 +120,35 @@ export function setAutoSendLastRunWeek(weekKey) {
 // every day's summary; this instead answers "where am I on THIS day". A
 // day someone's split across more than one job gets one row per job, with
 // the day repeated on each so the table still reads correctly row by row.
-function buildBookingRows(items, startDate, endDate, includeWeekends) {
+// Leave gets its own row too (Job column reads "Leave", Phase column
+// carries the leave type) — pushed ahead of any job rows so it's the first
+// thing they see, and shown even alongside a job row on the same day
+// rather than one replacing the other: that combination is exactly the
+// "booked while on leave" conflict flagged elsewhere, and hiding either
+// side of it here would bury the thing they most need to notice.
+function buildBookingRows(items, leave, startDate, endDate, includeWeekends) {
   return buildDayRows(startDate, endDate, includeWeekends, (day, iso, rows) => {
     const dayItems = items.filter((item) => item.start_date <= iso && item.end_date >= iso);
-    if (dayItems.length === 0) {
+    const dayLeave = leave.filter((l) => l.start_date <= iso && l.end_date >= iso);
+
+    if (dayItems.length === 0 && dayLeave.length === 0) {
       rows.push([day, 'Nothing scheduled', '']);
-    } else {
-      for (const item of dayItems) {
-        const allocation = item.allocation_pct < 100 ? ` (${item.allocation_pct}%)` : '';
-        rows.push([day, item.job_name, `${item.phase_name}${allocation}`]);
-      }
+      return;
+    }
+    for (const l of dayLeave) {
+      rows.push([day, 'Leave', LEAVE_TYPE_LABELS[l.type] ?? l.type]);
+    }
+    for (const item of dayItems) {
+      const allocation = item.allocation_pct < 100 ? ` (${item.allocation_pct}%)` : '';
+      rows.push([day, item.job_name, `${item.phase_name}${allocation}`]);
     }
   });
 }
 
 const BOOKING_HEADERS = ['Day', 'Job', 'Phase'];
 
-export function formatSummaryEmail(employee, items, startDate, endDate, template = getTemplate(), includeWeekends = false) {
-  const rows = buildBookingRows(items, startDate, endDate, includeWeekends);
+export function formatSummaryEmail(employee, items, leave, startDate, endDate, template = getTemplate(), includeWeekends = false) {
+  const rows = buildBookingRows(items, leave, startDate, endDate, includeWeekends);
   const effectiveEndDate = includeWeekends ? endDate : lastWeekdayOnOrBefore(endDate);
 
   const values = {

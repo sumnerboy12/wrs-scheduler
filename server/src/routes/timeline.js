@@ -29,11 +29,13 @@ router.get('/', (req, res) => {
        ORDER BY a.start_date`
     )
     .all();
+  const leave = db.prepare('SELECT * FROM leave_periods ORDER BY start_date').all();
 
-  const conflictIds = computeConflictIds(assignments);
-  const assignmentsWithConflict = assignments.map((a) => ({ ...a, conflict: conflictIds.has(a.id) }));
+  const { assignmentConflictIds, leaveConflictIds } = computeConflictIds(assignments, leave);
+  const assignmentsWithConflict = assignments.map((a) => ({ ...a, conflict: assignmentConflictIds.has(a.id) }));
+  const leaveWithConflict = leave.map((l) => ({ ...l, conflict: leaveConflictIds.has(l.id) }));
 
-  res.json({ employees, jobs, phases, assignments: assignmentsWithConflict, clients });
+  res.json({ employees, jobs, phases, assignments: assignmentsWithConflict, clients, leave: leaveWithConflict });
 });
 
 export default router;

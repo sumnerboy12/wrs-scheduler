@@ -11,7 +11,7 @@ export const EMPLOYEE_SUMMARY_PLACEHOLDERS: SummaryPlaceholder[] = [
   { token: '{{full_name}}', description: "employee's full name" },
   { token: '{{start_date}}', description: 'range start, e.g. Mon 20 Jul' },
   { token: '{{end_date}}', description: 'range end, e.g. Sun 26 Jul' },
-  { token: '{{bookings}}', description: 'the rendered list of bookings (or "nothing scheduled")' },
+  { token: '{{bookings}}', description: 'the rendered list of bookings and leave (or "nothing scheduled")' },
 ];
 
 export const JOB_SUMMARY_PLACEHOLDERS: SummaryPlaceholder[] = [

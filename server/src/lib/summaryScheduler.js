@@ -25,12 +25,15 @@ async function sendAutoSummaries(includeWeekends) {
   const { start, end } = nextWeekRange();
   // Only employees with something to say, same default as the manual
   // Summaries screen pre-checks — nobody wants a weekly "nothing scheduled"
-  // email if that's genuinely all it would ever say.
-  const summaries = buildWeeklySummaries(start, end).filter((s) => s.items.length > 0 && s.employee.email);
+  // email if that's genuinely all it would ever say. Leave alone counts —
+  // someone with no bookings but a week of leave still wants that email.
+  const summaries = buildWeeklySummaries(start, end).filter(
+    (s) => (s.items.length > 0 || s.leave.length > 0) && s.employee.email
+  );
 
-  for (const { employee, items } of summaries) {
+  for (const { employee, items, leave } of summaries) {
     try {
-      const { subject, text, html } = formatSummaryEmail(employee, items, start, end, template, includeWeekends);
+      const { subject, text, html } = formatSummaryEmail(employee, items, leave, start, end, template, includeWeekends);
       await sendMail({ to: employee.email, subject, text, html });
     } catch (e) {
       console.error(`[summary auto-send] failed to email ${employee.name}:`, e.message);

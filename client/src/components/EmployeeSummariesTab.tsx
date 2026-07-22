@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import type { AutoSendConfig, EmployeeSummary, SendSummariesResult, SummaryPreview, SummaryTemplate } from '../types';
+import { LEAVE_TYPE_LABELS } from '../types';
 import { addDays, formatShortDate, startOfWeek, toISODate } from '../lib/dates';
 import SummaryTemplateModal, { EMPLOYEE_SUMMARY_PLACEHOLDERS } from './SummaryTemplateModal';
 import SummaryPreviewModal from './SummaryPreviewModal';
@@ -96,9 +97,10 @@ export default function EmployeeSummariesTab() {
       .then((data) => {
         setEmployees(data.employees);
         setMailConfigured(data.mailConfigured);
-        // Pre-check anyone who actually has bookings this range — an empty
-        // summary is more often "nothing to say" than "please email them".
-        setSelected(new Set(data.employees.filter((e) => e.items.length > 0).map((e) => e.id)));
+        // Pre-check anyone who actually has bookings or leave this range —
+        // an empty summary is more often "nothing to say" than "please
+        // email them".
+        setSelected(new Set(data.employees.filter((e) => e.items.length > 0 || e.leave.length > 0).map((e) => e.id)));
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
       .finally(() => setLoading(false));
@@ -203,8 +205,8 @@ export default function EmployeeSummariesTab() {
   return (
     <>
       <p style={{ color: 'var(--text-dim)', marginTop: 0 }}>
-        Each active employee's bookings for the selected date range, ready to email as a
-        weekly schedule.
+        Each active employee's bookings and leave for the selected date range, ready to email
+        as a weekly schedule.
       </p>
 
       {!mailConfigured && (
@@ -282,12 +284,20 @@ export default function EmployeeSummariesTab() {
                       </div>
                     </td>
                     <td>
-                      {emp.items.length === 0 ? (
+                      {emp.items.length === 0 && emp.leave.length === 0 ? (
                         <span style={{ color: 'var(--text-dim)' }}>Nothing scheduled</span>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {emp.leave.map((l, i) => (
+                            <div key={`leave-${i}`} style={{ fontSize: 13 }}>
+                              <span style={{ color: 'var(--text-dim)' }}>
+                                {formatShortDate(l.start_date)} – {formatShortDate(l.end_date)}:
+                              </span>{' '}
+                              Leave — {LEAVE_TYPE_LABELS[l.type]}
+                            </div>
+                          ))}
                           {emp.items.map((item, i) => (
-                            <div key={i} style={{ fontSize: 13 }}>
+                            <div key={`item-${i}`} style={{ fontSize: 13 }}>
                               <span style={{ color: 'var(--text-dim)' }}>
                                 {formatShortDate(item.start_date)} – {formatShortDate(item.end_date)}:
                               </span>{' '}

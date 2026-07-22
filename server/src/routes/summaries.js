@@ -27,7 +27,7 @@ router.get('/', (req, res) => {
   const summaries = buildWeeklySummaries(start, end);
   res.json({
     mailConfigured: isMailConfigured(),
-    employees: summaries.map(({ employee, items }) => ({
+    employees: summaries.map(({ employee, items, leave }) => ({
       id: employee.id,
       name: employee.name,
       email: employee.email,
@@ -39,6 +39,7 @@ router.get('/', (req, res) => {
         end_date: i.end_date,
         allocation_pct: i.allocation_pct,
       })),
+      leave: leave.map((l) => ({ type: l.type, start_date: l.start_date, end_date: l.end_date })),
     })),
   });
 });
@@ -75,7 +76,7 @@ router.get('/preview', (req, res) => {
   const summary = buildWeeklySummaries(start, end).find((s) => s.employee.id === Number(employeeId));
   if (!summary) return res.status(404).json({ error: 'employee not found' });
 
-  res.json(formatSummaryEmail(summary.employee, summary.items, start, end, undefined, includeWeekends === 'true'));
+  res.json(formatSummaryEmail(summary.employee, summary.items, summary.leave, start, end, undefined, includeWeekends === 'true'));
 });
 
 router.post('/send', requireWrite, async (req, res) => {
@@ -93,13 +94,13 @@ router.post('/send', requireWrite, async (req, res) => {
   const summaries = buildWeeklySummaries(start, end).filter((s) => employeeIds.includes(s.employee.id));
 
   const results = [];
-  for (const { employee, items } of summaries) {
+  for (const { employee, items, leave } of summaries) {
     if (!employee.email) {
       results.push({ employee_id: employee.id, name: employee.name, status: 'skipped', reason: 'no email on file' });
       continue;
     }
     try {
-      const { subject, text, html } = formatSummaryEmail(employee, items, start, end, template, Boolean(includeWeekends));
+      const { subject, text, html } = formatSummaryEmail(employee, items, leave, start, end, template, Boolean(includeWeekends));
       await sendMail({ to: employee.email, subject, text, html });
       results.push({ employee_id: employee.id, name: employee.name, status: 'sent' });
     } catch (e) {
