@@ -21,6 +21,7 @@ import phasesRouter from './routes/phases.js';
 import assignmentsRouter from './routes/assignments.js';
 import timelineRouter from './routes/timeline.js';
 import summariesRouter from './routes/summaries.js';
+import eventsRouter from './routes/events.js';
 import { startSummaryScheduler } from './lib/summaryScheduler.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -54,6 +55,7 @@ app.use('/api/phases', requireAuth, phasesRouter);
 app.use('/api/assignments', requireAuth, assignmentsRouter);
 app.use('/api/timeline', requireAuth, timelineRouter);
 app.use('/api/summaries', requireAuth, summariesRouter);
+app.use('/api/events', requireAuth, eventsRouter);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 

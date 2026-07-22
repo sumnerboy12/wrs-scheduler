@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db/index.js';
 import { requireWrite } from '../middleware/auth.js';
+import { broadcast } from '../lib/events.js';
 
 const router = Router();
 
@@ -25,12 +26,14 @@ router.put('/:id', requireWrite, (req, res) => {
   );
 
   const row = db.prepare('SELECT * FROM phases WHERE id = ?').get(id);
+  broadcast('phases');
   res.json(row);
 });
 
 router.delete('/:id', requireWrite, (req, res) => {
   const id = Number(req.params.id);
   db.prepare('DELETE FROM phases WHERE id = ?').run(id);
+  broadcast('phases');
   res.status(204).end();
 });
 

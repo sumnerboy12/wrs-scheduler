@@ -23,6 +23,7 @@ import {
 import { escapeHtml } from '../lib/html';
 import { nzHolidaysInRange } from '../lib/nzHolidays';
 import { NO_CLIENT_COLOR } from '../lib/colors';
+import { useLiveRefresh } from '../lib/useLiveRefresh';
 
 type GroupMode = 'employee' | 'job';
 
@@ -107,6 +108,7 @@ export default function SchedulePage() {
   useEffect(() => {
     load();
   }, []);
+  useLiveRefresh(load);
 
   const jobsById = useMemo(() => new Map((data?.jobs ?? []).map((j) => [j.id, j])), [data]);
   const employeesById = useMemo(() => new Map((data?.employees ?? []).map((e) => [e.id, e])), [data]);

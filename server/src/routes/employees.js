@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db/index.js';
 import { requireWrite } from '../middleware/auth.js';
+import { broadcast } from '../lib/events.js';
 
 const router = Router();
 
@@ -27,6 +28,7 @@ router.post('/', requireWrite, (req, res) => {
     .run(name.trim(), role || null, email || null, phone || null, color || '#4f7cff', notes || null);
 
   const row = db.prepare('SELECT * FROM employees WHERE id = ?').get(result.lastInsertRowid);
+  broadcast('employees');
   res.status(201).json(row);
 });
 
@@ -52,12 +54,14 @@ router.put('/:id', requireWrite, (req, res) => {
   );
 
   const row = db.prepare('SELECT * FROM employees WHERE id = ?').get(id);
+  broadcast('employees');
   res.json(row);
 });
 
 router.delete('/:id', requireWrite, (req, res) => {
   const id = Number(req.params.id);
   db.prepare('DELETE FROM employees WHERE id = ?').run(id);
+  broadcast('employees');
   res.status(204).end();
 });
 

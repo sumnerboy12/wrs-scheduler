@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import type { Client } from '../types';
 import ClientModal from '../components/ClientModal';
 import { useAuth } from '../auth/AuthContext';
+import { useLiveRefresh } from '../lib/useLiveRefresh';
 
 export default function ClientsPage() {
   const { isReadOnly } = useAuth();
@@ -20,6 +21,7 @@ export default function ClientsPage() {
   };
 
   useEffect(load, []);
+  useLiveRefresh(load);
 
   return (
     <div style={{ padding: 20, maxWidth: 900, margin: '0 auto' }}>

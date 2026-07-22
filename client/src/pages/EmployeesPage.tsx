@@ -4,6 +4,7 @@ import type { Employee } from '../types';
 import EmployeeModal from '../components/EmployeeModal';
 import ImportModal, { type ImportField } from '../components/ImportModal';
 import { useAuth } from '../auth/AuthContext';
+import { useLiveRefresh } from '../lib/useLiveRefresh';
 
 const EMPLOYEE_IMPORT_FIELDS: ImportField[] = [
   { key: 'name', label: 'Name', required: true, aliases: ['name', 'employee', 'employee name', 'full name', 'staff name'] },
@@ -30,6 +31,7 @@ export default function EmployeesPage() {
   };
 
   useEffect(load, []);
+  useLiveRefresh(load);
 
   const visible = employees.filter((e) => showInactive || e.active);
 

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db/index.js';
 import { computeConflictIds } from '../lib/conflicts.js';
 import { requireWrite } from '../middleware/auth.js';
+import { broadcast } from '../lib/events.js';
 
 const router = Router();
 
@@ -30,6 +31,7 @@ router.post('/', requireWrite, (req, res) => {
     .run(phase_id, employee_id, start_date, end_date, allocation_pct ?? 100, notes || null);
 
   const row = db.prepare('SELECT * FROM assignments WHERE id = ?').get(result.lastInsertRowid);
+  broadcast('assignments');
   res.status(201).json(row);
 });
 
@@ -54,12 +56,14 @@ router.put('/:id', requireWrite, (req, res) => {
   );
 
   const row = db.prepare('SELECT * FROM assignments WHERE id = ?').get(id);
+  broadcast('assignments');
   res.json(row);
 });
 
 router.delete('/:id', requireWrite, (req, res) => {
   const id = Number(req.params.id);
   db.prepare('DELETE FROM assignments WHERE id = ?').run(id);
+  broadcast('assignments');
   res.status(204).end();
 });
 

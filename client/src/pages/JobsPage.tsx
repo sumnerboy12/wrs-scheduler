@@ -10,6 +10,7 @@ import ImportModal, { type ImportField } from '../components/ImportModal';
 import { matchJobStatus } from '../lib/jobStatus';
 import { formatShortDate } from '../lib/dates';
 import { NO_CLIENT_COLOR } from '../lib/colors';
+import { useLiveRefresh } from '../lib/useLiveRefresh';
 
 const STATUS_FILTER_KEY = 'rostr-jobs-status-filter';
 
@@ -91,6 +92,13 @@ export default function JobsPage() {
     loadClients();
     loadEmployees();
   }, []);
+
+  useLiveRefresh(() => {
+    loadJobs();
+    loadClients();
+    loadEmployees();
+    if (selectedId != null) loadDetail(selectedId);
+  });
 
   useEffect(() => {
     if (selectedId != null) loadDetail(selectedId);

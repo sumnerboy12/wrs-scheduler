@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db/index.js';
 import { requireWrite } from '../middleware/auth.js';
+import { broadcast } from '../lib/events.js';
 
 const router = Router();
 
@@ -18,6 +19,7 @@ router.post('/', requireWrite, (req, res) => {
     .run(name.trim(), color || '#3b82f6', notes || null);
 
   const row = db.prepare('SELECT * FROM clients WHERE id = ?').get(result.lastInsertRowid);
+  broadcast('clients');
   res.status(201).json(row);
 });
 
@@ -32,6 +34,7 @@ router.put('/:id', requireWrite, (req, res) => {
   ).run(name ?? existing.name, color ?? existing.color, notes ?? existing.notes, id);
 
   const row = db.prepare('SELECT * FROM clients WHERE id = ?').get(id);
+  broadcast('clients');
   res.json(row);
 });
 
@@ -41,6 +44,10 @@ router.delete('/:id', requireWrite, (req, res) => {
   // deleted, via the column's ON DELETE SET NULL — a client going away
   // shouldn't take its job history with it.
   db.prepare('DELETE FROM clients WHERE id = ?').run(id);
+  broadcast('clients');
+  // Job rows changed too (their client_id was cleared), so the jobs list
+  // and Schedule (which reads client colour through the job) need to know.
+  broadcast('jobs');
   res.status(204).end();
 });
 
