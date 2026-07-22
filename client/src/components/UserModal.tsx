@@ -5,7 +5,9 @@ interface Props {
   user: ManagedUser | null;
   currentUserId: number;
   onClose: () => void;
-  onSave: (data: { username: string; password: string; role: UserRole } | { role: UserRole; active: boolean }) => Promise<void>;
+  onSave: (
+    data: { username: string; password: string; role: UserRole; email: string | null } | { role: UserRole; active: boolean; email: string | null }
+  ) => Promise<void>;
   onDelete?: (id: number) => Promise<void>;
 }
 
@@ -13,6 +15,7 @@ export default function UserModal({ user, currentUserId, onClose, onSave, onDele
   const isSelf = user?.id === currentUserId;
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(user?.email ?? '');
   const [role, setRole] = useState<UserRole>(user?.role ?? 'editor');
   const [active, setActive] = useState(user?.active ?? true);
   const [saving, setSaving] = useState(false);
@@ -26,7 +29,8 @@ export default function UserModal({ user, currentUserId, onClose, onSave, onDele
     setSaving(true);
     setError(null);
     try {
-      await onSave(user ? { role, active } : { username: username.trim(), password, role });
+      const emailValue = email.trim() || null;
+      await onSave(user ? { role, active, email: emailValue } : { username: username.trim(), password, role, email: emailValue });
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save');
@@ -73,6 +77,14 @@ export default function UserModal({ user, currentUserId, onClose, onSave, onDele
             </div>
           </>
         )}
+
+        <div className="field">
+          <label>Email</label>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="optional" />
+          <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+            Only needed to enable "Sign in with SSO" for this account — must match their identity provider email.
+          </div>
+        </div>
 
         <div className="field" style={{ marginBottom: user ? 8 : 12 }}>
           <label>Role</label>

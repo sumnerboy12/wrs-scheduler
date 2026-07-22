@@ -8,6 +8,7 @@ import type {
   JobSummariesPayload,
   JobWithPhases,
   ManagedUser,
+  OidcStatus,
   Phase,
   SendJobSummariesResult,
   SendSummariesResult,
@@ -42,11 +43,12 @@ export const api = {
   getMe: () => request<AuthUser>('/auth/me'),
   changePassword: (current_password: string, new_password: string) =>
     request<void>('/auth/change-password', { method: 'POST', body: JSON.stringify({ current_password, new_password }) }),
+  getOidcStatus: () => request<OidcStatus>('/auth/oidc/status'),
 
   getUsers: () => request<ManagedUser[]>('/users'),
-  createUser: (data: { username: string; password: string; role: UserRole }) =>
+  createUser: (data: { username: string; password: string; role: UserRole; email?: string | null }) =>
     request<ManagedUser>('/users', { method: 'POST', body: JSON.stringify(data) }),
-  updateUser: (id: number, data: Partial<{ role: UserRole; active: boolean }>) =>
+  updateUser: (id: number, data: Partial<{ role: UserRole; active: boolean; email: string | null }>) =>
     request<ManagedUser>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   resetUserPassword: (id: number, password: string) =>
     request<void>(`/users/${id}/reset-password`, { method: 'POST', body: JSON.stringify({ password }) }),

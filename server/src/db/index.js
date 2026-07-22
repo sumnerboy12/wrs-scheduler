@@ -77,5 +77,12 @@ if (userColumns.includes('is_admin')) {
   db.exec('ALTER TABLE users DROP COLUMN is_admin');
 }
 
+// Lets an account sign in via OIDC/SSO (see lib/oidc.js) by matching this
+// against the identity provider's verified email claim — separate from
+// username, and nullable since SSO is optional and off by default.
+if (!userColumns.includes('email')) {
+  db.exec('ALTER TABLE users ADD COLUMN email TEXT');
+}
+
 export { dataDir };
 export default db;

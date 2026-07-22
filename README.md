@@ -91,7 +91,9 @@ be asked to set a real password on first login.
 
 From **Users** (visible to admins only) you can add more logins, promote/demote
 admins, deactivate or remove accounts, and reset anyone's password (which
-marks their account so they're asked to set a new one on next login).
+marks their account so they're asked to set a new one on next login). Setting
+a user's **Email** also lets them sign in via SSO instead, if it's configured
+— see below.
 
 Note: sessions are kept in the server's memory, not the database, so
 restarting the app (a rebuild/redeploy, or a Windows reboot) signs everyone
@@ -139,6 +141,31 @@ works for previewing — sending is just disabled with a clear message.
 - **Docker install**: create a `.env` file next to `docker-compose.yml` with
   the same variables — `docker compose up -d --build` picks it up
   automatically (see the comment in `docker-compose.yml`).
+
+## Signing in with SSO (optional)
+
+The login screen can show a "Sign in with SSO" button backed by any OpenID
+Connect provider — Microsoft Entra ID (Azure AD) is a natural fit if your
+team already has Microsoft 365 accounts. Without this configured, only the
+username/password login shows.
+
+SSO does **not** create accounts on its own: a matching user must already
+exist under **Users** with its **Email** set to that person's identity
+provider email (case-insensitive) — this keeps account provisioning under
+your control rather than letting anyone with an org email in.
+
+To set it up:
+
+1. Register an application with your identity provider and set its redirect
+   URI to `https://<your-rostr-url>/api/auth/oidc/callback` (or
+   `http://localhost:4000/api/auth/oidc/callback` for local testing).
+2. Fill in `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` and
+   `OIDC_REDIRECT_URI` the same way as the SMTP variables above (see
+   `server/.env.example` for the exact Entra ID issuer URL format).
+3. Set each user's **Email** under Users to match their provider account.
+
+Local username/password logins keep working alongside SSO — useful as a
+fallback if the identity provider is ever unreachable.
 
 ## Development mode
 

@@ -88,10 +88,15 @@ export interface AuthUser {
 export interface ManagedUser {
   id: number;
   username: string;
+  email: string | null;
   role: UserRole;
   active: boolean;
   must_change_password: boolean;
   created_at: string;
+}
+
+export interface OidcStatus {
+  enabled: boolean;
 }
 
 export interface SummaryItem {

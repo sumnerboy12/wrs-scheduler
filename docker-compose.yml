@@ -21,3 +21,9 @@ services:
       - SMTP_FROM=${SMTP_FROM:-}
       - SMTP_FROM_NAME=${SMTP_FROM_NAME:-}
       - SMTP_REPLY_TO=${SMTP_REPLY_TO:-}
+      # Optional — enables "Sign in with SSO" via any OpenID Connect
+      # provider. See server/.env.example for details.
+      - OIDC_ISSUER_URL=${OIDC_ISSUER_URL:-}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
+      - OIDC_REDIRECT_URI=${OIDC_REDIRECT_URI:-}

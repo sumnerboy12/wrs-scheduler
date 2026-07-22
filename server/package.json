@@ -13,6 +13,7 @@
     "dotenv": "^17.4.2",
     "express": "^4.21.0",
     "express-session": "^1.18.1",
-    "nodemailer": "^9.0.3"
+    "nodemailer": "^9.0.3",
+    "openid-client": "^6.8.4"
   }
 }

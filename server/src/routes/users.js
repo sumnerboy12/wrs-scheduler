@@ -12,6 +12,7 @@ function publicUser(user) {
   return {
     id: user.id,
     username: user.username,
+    email: user.email,
     role: user.role,
     active: !!user.active,
     must_change_password: !!user.must_change_password,
@@ -29,7 +30,7 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { username, password, role } = req.body;
+  const { username, password, role, email } = req.body;
   if (!username || !username.trim()) return res.status(400).json({ error: 'Username is required' });
   if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
   if (role != null && !ROLES.includes(role)) return res.status(400).json({ error: 'Invalid role' });
@@ -38,8 +39,8 @@ router.post('/', (req, res) => {
   if (existing) return res.status(400).json({ error: 'That username is already taken' });
 
   const result = db
-    .prepare('INSERT INTO users (username, password_hash, role, must_change_password) VALUES (?, ?, ?, 1)')
-    .run(username.trim(), hashPassword(password), role || 'editor');
+    .prepare('INSERT INTO users (username, password_hash, role, email, must_change_password) VALUES (?, ?, ?, ?, 1)')
+    .run(username.trim(), hashPassword(password), role || 'editor', email?.trim() || null);
 
   const row = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(publicUser(row));
@@ -50,17 +51,23 @@ router.put('/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'not found' });
 
-  const { role, active } = req.body;
+  const { role, active, email } = req.body;
   if (role != null && !ROLES.includes(role)) return res.status(400).json({ error: 'Invalid role' });
   const nextRole = role ?? existing.role;
   const nextActive = active != null ? (active ? 1 : 0) : existing.active;
+  const nextEmail = email !== undefined ? email?.trim() || null : existing.email;
 
   const losingAdminCoverage = existing.role === 'admin' && existing.active && (nextRole !== 'admin' || !nextActive);
   if (losingAdminCoverage && countOtherActiveAdmins(id) === 0) {
     return res.status(400).json({ error: 'Cannot remove the last admin' });
   }
 
-  db.prepare(`UPDATE users SET role = ?, active = ?, updated_at = datetime('now') WHERE id = ?`).run(nextRole, nextActive, id);
+  db.prepare(`UPDATE users SET role = ?, active = ?, email = ?, updated_at = datetime('now') WHERE id = ?`).run(
+    nextRole,
+    nextActive,
+    nextEmail,
+    id
+  );
 
   const row = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
   res.json(publicUser(row));

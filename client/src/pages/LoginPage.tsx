@@ -1,12 +1,32 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { api } from '../api/client';
+
+const OIDC_ERROR_MESSAGES: Record<string, string> = {
+  oidc_expired: 'Sign-in took too long — please try again.',
+  oidc_no_email: "Your identity provider didn't share an email address, so Rostr can't match your account.",
+  oidc_no_account: "No Rostr account matches your email. Ask an admin to add it under Users.",
+  oidc_failed: 'Sign-in failed. Please try again.',
+};
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const [searchParams] = useSearchParams();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [oidcEnabled, setOidcEnabled] = useState(false);
+
+  useEffect(() => {
+    api.getOidcStatus().then((s) => setOidcEnabled(s.enabled)).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const oidcError = searchParams.get('error');
+    if (oidcError) setError(OIDC_ERROR_MESSAGES[oidcError] ?? 'Sign-in failed. Please try again.');
+  }, [searchParams]);
 
   const handleSubmit = async () => {
     if (!username || !password) return;
@@ -45,6 +65,22 @@ export default function LoginPage() {
         <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting} style={{ width: '100%' }}>
           {submitting ? 'Signing in…' : 'Sign in'}
         </button>
+        {oidcEnabled && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0', color: 'var(--text-dim)', fontSize: 12 }}>
+              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+              or
+              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+            </div>
+            <a
+              href="/api/auth/oidc/login"
+              className="btn"
+              style={{ width: '100%', display: 'block', textAlign: 'center', boxSizing: 'border-box', textDecoration: 'none' }}
+            >
+              Sign in with SSO
+            </a>
+          </>
+        )}
       </div>
     </div>
   );
