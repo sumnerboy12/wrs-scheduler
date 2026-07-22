@@ -72,10 +72,10 @@ export default function StatusFilterDropdown({ value, onChange, style }: Props) 
         >
           <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
             <button type="button" className="btn" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => onChange(ALL_STATUSES)}>
-              All jobs
+              All
             </button>
             <button type="button" className="btn" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => onChange(ACTIVE_STATUSES)}>
-              Active jobs
+              Active
             </button>
             <button type="button" className="btn" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => onChange([])}>
               None
