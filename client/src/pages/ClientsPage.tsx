@@ -13,7 +13,6 @@ export default function ClientsPage() {
   const [showAdd, setShowAdd] = useState(false);
 
   const load = () => {
-    setLoading(true);
     api.getClients().then((data) => {
       setClients(data);
       setLoading(false);
