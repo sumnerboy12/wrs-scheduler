@@ -4,7 +4,7 @@ export function requireAuth(req, res, next) {
   const userId = req.session?.userId;
   if (!userId) return res.status(401).json({ error: 'not authenticated' });
 
-  const user = db.prepare('SELECT id, username, role, active, must_change_password FROM users WHERE id = ?').get(userId);
+  const user = db.prepare('SELECT id, username, role, active, must_change_password, sso_only FROM users WHERE id = ?').get(userId);
   if (!user || !user.active) {
     return req.session.destroy(() => res.status(401).json({ error: 'not authenticated' }));
   }
