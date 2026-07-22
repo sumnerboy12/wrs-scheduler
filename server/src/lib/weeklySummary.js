@@ -126,26 +126,29 @@ export function setAutoSendLastRunWeek(weekKey) {
 // rather than one replacing the other: that combination is exactly the
 // "booked while on leave" conflict flagged elsewhere, and hiding either
 // side of it here would bury the thing they most need to notice.
+// Any note on the underlying assignment/leave row rides along in its own
+// trailing column — left blank when there isn't one, rather than omitting
+// the column entirely, so the table's shape doesn't shift week to week.
 function buildBookingRows(items, leave, startDate, endDate, includeWeekends) {
   return buildDayRows(startDate, endDate, includeWeekends, (day, iso, rows) => {
     const dayItems = items.filter((item) => item.start_date <= iso && item.end_date >= iso);
     const dayLeave = leave.filter((l) => l.start_date <= iso && l.end_date >= iso);
 
     if (dayItems.length === 0 && dayLeave.length === 0) {
-      rows.push([day, 'Nothing scheduled', '']);
+      rows.push([day, 'Nothing scheduled', '', '']);
       return;
     }
     for (const l of dayLeave) {
-      rows.push([day, 'Leave', LEAVE_TYPE_LABELS[l.type] ?? l.type]);
+      rows.push([day, 'Leave', LEAVE_TYPE_LABELS[l.type] ?? l.type, l.notes || '']);
     }
     for (const item of dayItems) {
       const allocation = item.allocation_pct < 100 ? ` (${item.allocation_pct}%)` : '';
-      rows.push([day, item.job_name, `${item.phase_name}${allocation}`]);
+      rows.push([day, item.job_name, `${item.phase_name}${allocation}`, item.notes || '']);
     }
   });
 }
 
-const BOOKING_HEADERS = ['Day', 'Job', 'Phase'];
+const BOOKING_HEADERS = ['Day', 'Job', 'Phase', 'Notes'];
 
 export function formatSummaryEmail(employee, items, leave, startDate, endDate, template = getTemplate(), includeWeekends = false) {
   const rows = buildBookingRows(items, leave, startDate, endDate, includeWeekends);
