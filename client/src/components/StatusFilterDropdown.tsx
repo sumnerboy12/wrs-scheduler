@@ -33,11 +33,11 @@ export default function StatusFilterDropdown({ value, onChange, style }: Props) 
 
   const summary =
     value.length === ALL_STATUSES.length
-      ? 'All statuses'
+      ? 'All jobs'
       : isSameSet(value, ACTIVE_STATUSES)
-        ? 'Active statuses'
+        ? 'Active jobs'
         : value.length === 0
-          ? 'No statuses'
+          ? 'No jobs'
           : value.length === 1
             ? JOB_STATUS_LABELS[value[0]]
             : `${value.length} statuses`;
@@ -72,10 +72,10 @@ export default function StatusFilterDropdown({ value, onChange, style }: Props) 
         >
           <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
             <button type="button" className="btn" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => onChange(ALL_STATUSES)}>
-              All
+              All jobs
             </button>
             <button type="button" className="btn" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => onChange(ACTIVE_STATUSES)}>
-              Active
+              Active jobs
             </button>
             <button type="button" className="btn" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => onChange([])}>
               None
