@@ -1,16 +1,27 @@
-// Flags assignments where an employee is booked over 100% allocation on
-// overlapping dates, or booked on a job while also marked on leave for an
-// overlapping date — either way it's something a scheduler should notice.
-// Assignments and leave periods are different record types with their own
-// id spaces, so two separate id sets come back rather than one shared set.
-export function computeConflictIds(assignments, leavePeriods = []) {
+// Flags assignments/non-billable blocks where an employee is booked over
+// 100% allocation on overlapping dates — a job and a training block stack
+// against the same capacity the same way two jobs would — or booked/
+// non-billable while also marked on leave for an overlapping date. Each
+// record type has its own id space, so three separate id sets come back
+// rather than one shared set.
+export function computeConflictIds(assignments, leavePeriods = [], nonBillablePeriods = []) {
   const assignmentConflictIds = new Set();
   const leaveConflictIds = new Set();
-  const byEmployee = new Map();
+  const nonBillableConflictIds = new Set();
 
-  for (const a of assignments) {
-    if (!byEmployee.has(a.employee_id)) byEmployee.set(a.employee_id, []);
-    byEmployee.get(a.employee_id).push(a);
+  // Assignments and non-billable blocks share the same 100%-of-day
+  // capacity pool, so every pairwise overlap check below runs across
+  // both together, not assignments alone.
+  const combined = [
+    ...assignments.map((a) => ({ ...a, kind: 'assignment' })),
+    ...nonBillablePeriods.map((n) => ({ ...n, kind: 'nonBillable' })),
+  ];
+  const flag = (item) => (item.kind === 'assignment' ? assignmentConflictIds.add(item.id) : nonBillableConflictIds.add(item.id));
+
+  const byEmployee = new Map();
+  for (const item of combined) {
+    if (!byEmployee.has(item.employee_id)) byEmployee.set(item.employee_id, []);
+    byEmployee.get(item.employee_id).push(item);
   }
 
   for (const list of byEmployee.values()) {
@@ -20,8 +31,8 @@ export function computeConflictIds(assignments, leavePeriods = []) {
         const b = list[j];
         const overlaps = a.start_date <= b.end_date && b.start_date <= a.end_date;
         if (overlaps && a.allocation_pct + b.allocation_pct > 100) {
-          assignmentConflictIds.add(a.id);
-          assignmentConflictIds.add(b.id);
+          flag(a);
+          flag(b);
         }
       }
     }
@@ -33,15 +44,15 @@ export function computeConflictIds(assignments, leavePeriods = []) {
     leaveByEmployee.get(l.employee_id).push(l);
   }
 
-  for (const a of assignments) {
-    for (const l of leaveByEmployee.get(a.employee_id) ?? []) {
-      const overlaps = a.start_date <= l.end_date && l.start_date <= a.end_date;
+  for (const item of combined) {
+    for (const l of leaveByEmployee.get(item.employee_id) ?? []) {
+      const overlaps = item.start_date <= l.end_date && l.start_date <= item.end_date;
       if (overlaps) {
-        assignmentConflictIds.add(a.id);
+        flag(item);
         leaveConflictIds.add(l.id);
       }
     }
   }
 
-  return { assignmentConflictIds, leaveConflictIds };
+  return { assignmentConflictIds, leaveConflictIds, nonBillableConflictIds };
 }

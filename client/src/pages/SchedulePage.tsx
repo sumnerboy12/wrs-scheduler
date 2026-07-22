@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
-import type { Assignment, Employee, Job, JobStatus, LeavePeriod, Phase, TimelinePayload } from '../types';
-import { JOB_STATUS_LABELS, LEAVE_TYPE_LABELS } from '../types';
+import type { Assignment, Employee, Job, JobStatus, LeavePeriod, NonBillablePeriod, Phase, TimelinePayload } from '../types';
+import { JOB_STATUS_LABELS, LEAVE_TYPE_LABELS, NON_BILLABLE_CATEGORY_LABELS } from '../types';
 import TimelineView, { type TimelineViewHandle, type TLGroup, type TLItem } from '../components/TimelineView';
 import AssignmentModal from '../components/AssignmentModal';
 import JobModal from '../components/JobModal';
 import PhaseModal from '../components/PhaseModal';
 import EmployeeModal from '../components/EmployeeModal';
 import LeaveModal from '../components/LeaveModal';
+import NonBillableModal from '../components/NonBillableModal';
 import StatusFilterDropdown, { ACTIVE_STATUSES } from '../components/StatusFilterDropdown';
 import {
   addDays,
@@ -103,6 +104,8 @@ export default function SchedulePage() {
   const [creating, setCreating] = useState<{ employeeId?: number; jobId?: number; phaseId?: number; date?: string } | null>(null);
   const [editingLeave, setEditingLeave] = useState<LeavePeriod | null>(null);
   const [creatingLeave, setCreatingLeave] = useState<{ employeeId?: number; date?: string } | null>(null);
+  const [editingNonBillable, setEditingNonBillable] = useState<NonBillablePeriod | null>(null);
+  const [creatingNonBillable, setCreatingNonBillable] = useState<{ employeeId?: number; date?: string } | null>(null);
 
   const centerRef = useRef(window ? new Date((window.start.getTime() + window.end.getTime()) / 2) : new Date());
   const timelineViewRef = useRef<TimelineViewHandle>(null);
@@ -172,8 +175,9 @@ export default function SchedulePage() {
       });
 
       const leaveItems: TLItem[] = data.leave.map(buildLeaveItem);
+      const nonBillableItems: TLItem[] = data.nonBillable.map(buildNonBillableItem);
 
-      return { groups, items: [...dateBackgroundItems, ...items, ...leaveItems] };
+      return { groups, items: [...dateBackgroundItems, ...items, ...leaveItems, ...nonBillableItems] };
     }
 
     const groups: TLGroup[] = [];
@@ -345,6 +349,10 @@ export default function SchedulePage() {
         const leaveId = Number(itemId.replace('leave-', ''));
         const leave = data?.leave.find((l) => l.id === leaveId);
         if (leave) setEditingLeave(leave);
+      } else if (itemId.startsWith('nonbillable-')) {
+        const nonBillableId = Number(itemId.replace('nonbillable-', ''));
+        const nonBillable = data?.nonBillable.find((n) => n.id === nonBillableId);
+        if (nonBillable) setEditingNonBillable(nonBillable);
       }
       return;
     }
@@ -471,6 +479,9 @@ export default function SchedulePage() {
             <button className="btn" onClick={() => setCreatingLeave({})}>
               + Add Leave
             </button>
+            <button className="btn" onClick={() => setCreatingNonBillable({})}>
+              + Add Non-billable
+            </button>
             <button className="btn btn-primary" onClick={() => setCreating({})}>
               + Add Assignment
             </button>
@@ -490,6 +501,15 @@ export default function SchedulePage() {
               style={{ background: 'repeating-linear-gradient(45deg, #4a5468, #4a5468 3px, #5b6680 3px, #5b6680 6px)' }}
             />
             Leave
+          </span>
+        )}
+        {groupMode === 'employee' && (
+          <span>
+            <span
+              className="legend-swatch"
+              style={{ background: 'repeating-linear-gradient(45deg, #2f6f68, #2f6f68 3px, #3f8a82 3px, #3f8a82 6px)' }}
+            />
+            Non-billable
           </span>
         )}
         <span>
@@ -627,6 +647,35 @@ export default function SchedulePage() {
           }}
         />
       )}
+      {editingNonBillable && (
+        <NonBillableModal
+          employees={activeEmployees}
+          nonBillable={editingNonBillable}
+          onClose={() => setEditingNonBillable(null)}
+          onSave={async (patch) => {
+            await api.updateNonBillable(editingNonBillable.id, patch);
+            load();
+          }}
+          onDelete={async (id) => {
+            await api.deleteNonBillable(id);
+            load();
+          }}
+          readOnly={isReadOnly}
+        />
+      )}
+      {creatingNonBillable && (
+        <NonBillableModal
+          employees={activeEmployees}
+          nonBillable={null}
+          defaultEmployeeId={creatingNonBillable.employeeId}
+          defaultDate={creatingNonBillable.date}
+          onClose={() => setCreatingNonBillable(null)}
+          onSave={async (patch) => {
+            await api.createNonBillable(patch);
+            load();
+          }}
+        />
+      )}
       {editingJob && (
         <JobModal
           job={editingJob}
@@ -744,6 +793,26 @@ function buildLeaveItem(l: LeavePeriod): TLItem {
   };
 }
 
+// Editable (unlike leave) — a non-billable block carries an allocation %
+// the same way an assignment does, so it makes sense to drag/resize it the
+// same way; there's just no job/phase group to move it between.
+function buildNonBillableItem(n: NonBillablePeriod): TLItem {
+  const classes = ['tl-item', 'non-billable-bar'];
+  if (n.conflict) classes.push('conflict');
+  const label = NON_BILLABLE_CATEGORY_LABELS[n.category];
+
+  return {
+    id: `nonbillable-${n.id}`,
+    group: `emp-${n.employee_id}`,
+    content: label,
+    start: parseISODateLocal(n.start_date),
+    end: parseISODateLocal(isoDatePlusOne(n.end_date)),
+    className: classes.join(' '),
+    title: `${label} · ${formatShortDate(n.start_date)} – ${formatShortDate(n.end_date)}${n.allocation_pct < 100 ? ` · ${n.allocation_pct}%` : ''}${n.conflict ? ' · OVER-ALLOCATED' : ''}`,
+    editable: false,
+  };
+}
+
 function buildItem(a: Assignment, group: string, content: string, job: Job | undefined, color: string): TLItem {
   const classes = ['tl-item'];
   if (job && TENTATIVE_STATUSES.has(job.status)) classes.push('tentative');
@@ -813,11 +882,12 @@ function buildDateBackgroundItems(): TLItem[] {
 // only the *shortfall* above that phase's own real allocation — an
 // estimate of 3 with 2 people already for-real assigned to that phase
 // contributes 1 more, not 3 more (the 2 are already in the real count).
-// Available headcount is total active staff minus anyone on leave that
-// day — someone on leave isn't there to cover an estimate even if
-// nothing's technically booked against them. Answers "could we actually
-// staff this if every estimate panned out, with who's actually around,"
-// not just "is any one person over-booked."
+// Available headcount is total active staff minus anyone on leave or doing
+// non-billable work (training, admin, ...) that day — either way they
+// aren't there to cover an estimate even if nothing's technically booked
+// against them. Answers "could we actually staff this if every estimate
+// panned out, with who's actually around," not just "is any one person
+// over-booked."
 function buildCapacityOverflowItems(data: TimelinePayload): TLItem[] {
   const activeEmployeeIds = new Set(data.employees.filter((e) => e.active).map((e) => e.id));
   const totalEmployees = activeEmployeeIds.size;
@@ -826,6 +896,7 @@ function buildCapacityOverflowItems(data: TimelinePayload): TLItem[] {
   const { rangeStart, rangeEnd } = getScheduleBackgroundRange();
   const estimatedPhases = data.phases.filter((p) => p.estimated_staff);
   const activeLeave = data.leave.filter((l) => activeEmployeeIds.has(l.employee_id));
+  const activeNonBillable = data.nonBillable.filter((n) => activeEmployeeIds.has(n.employee_id));
 
   const overflowDays: string[] = [];
   for (let d = new Date(rangeStart); d < rangeEnd; d = addDays(d, 1)) {
@@ -833,10 +904,11 @@ function buildCapacityOverflowItems(data: TimelinePayload): TLItem[] {
     const activeAssignments = data.assignments.filter((a) => a.start_date <= iso && a.end_date >= iso);
     const realCount = new Set(activeAssignments.map((a) => a.employee_id)).size;
 
-    const onLeaveCount = new Set(
-      activeLeave.filter((l) => l.start_date <= iso && l.end_date >= iso).map((l) => l.employee_id),
-    ).size;
-    const availableEmployees = totalEmployees - onLeaveCount;
+    const unavailableCount = new Set([
+      ...activeLeave.filter((l) => l.start_date <= iso && l.end_date >= iso).map((l) => l.employee_id),
+      ...activeNonBillable.filter((n) => n.start_date <= iso && n.end_date >= iso).map((n) => n.employee_id),
+    ]).size;
+    const availableEmployees = totalEmployees - unavailableCount;
 
     let extraEstimated = 0;
     for (const phase of estimatedPhases) {

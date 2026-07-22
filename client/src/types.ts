@@ -87,6 +87,26 @@ export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   other: 'Other',
 };
 
+export type NonBillableCategory = 'training' | 'admin' | 'meeting' | 'other';
+
+export interface NonBillablePeriod {
+  id: number;
+  employee_id: number;
+  category: NonBillableCategory;
+  start_date: string;
+  end_date: string;
+  allocation_pct: number;
+  notes: string | null;
+  conflict?: boolean;
+}
+
+export const NON_BILLABLE_CATEGORY_LABELS: Record<NonBillableCategory, string> = {
+  training: 'Training',
+  admin: 'Admin',
+  meeting: 'Meeting',
+  other: 'Other',
+};
+
 export interface TimelinePayload {
   employees: Employee[];
   jobs: Job[];
@@ -94,6 +114,7 @@ export interface TimelinePayload {
   assignments: Assignment[];
   clients: Client[];
   leave: LeavePeriod[];
+  nonBillable: NonBillablePeriod[];
 }
 
 export type UserRole = 'admin' | 'editor' | 'readonly';
@@ -136,12 +157,20 @@ export interface SummaryLeaveItem {
   end_date: string;
 }
 
+export interface SummaryNonBillableItem {
+  category: NonBillableCategory;
+  start_date: string;
+  end_date: string;
+  allocation_pct: number;
+}
+
 export interface EmployeeSummary {
   id: number;
   name: string;
   email: string | null;
   items: SummaryItem[];
   leave: SummaryLeaveItem[];
+  nonBillable: SummaryNonBillableItem[];
 }
 
 export interface SummariesPayload {

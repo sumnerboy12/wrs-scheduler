@@ -30,12 +30,22 @@ router.get('/', (req, res) => {
     )
     .all();
   const leave = db.prepare('SELECT * FROM leave_periods ORDER BY start_date').all();
+  const nonBillable = db.prepare('SELECT * FROM non_billable_periods ORDER BY start_date').all();
 
-  const { assignmentConflictIds, leaveConflictIds } = computeConflictIds(assignments, leave);
+  const { assignmentConflictIds, leaveConflictIds, nonBillableConflictIds } = computeConflictIds(assignments, leave, nonBillable);
   const assignmentsWithConflict = assignments.map((a) => ({ ...a, conflict: assignmentConflictIds.has(a.id) }));
   const leaveWithConflict = leave.map((l) => ({ ...l, conflict: leaveConflictIds.has(l.id) }));
+  const nonBillableWithConflict = nonBillable.map((n) => ({ ...n, conflict: nonBillableConflictIds.has(n.id) }));
 
-  res.json({ employees, jobs, phases, assignments: assignmentsWithConflict, clients, leave: leaveWithConflict });
+  res.json({
+    employees,
+    jobs,
+    phases,
+    assignments: assignmentsWithConflict,
+    clients,
+    leave: leaveWithConflict,
+    nonBillable: nonBillableWithConflict,
+  });
 });
 
 export default router;

@@ -613,6 +613,23 @@ tbody tr:nth-child(even) {
   color: #fff;
 }
 
+/* Non-billable time (training, admin, ...) — same diagonal-stripe language
+   as leave (also not job work, also always coloured independent of
+   --job-color), but a distinct teal so the two are never confused: leave
+   means "not here", this means "here, just not on a job". */
+.vis-item.tl-item.non-billable-bar {
+  background-color: #2f6f68;
+  background-image: repeating-linear-gradient(45deg, #2f6f68, #2f6f68 6px, #3f8a82 6px, #3f8a82 12px);
+  border-color: #3f8a82;
+  border-width: 1px;
+  border-radius: 6px;
+  color: #fff;
+}
+
+.vis-item.tl-item.non-billable-bar .vis-item-content {
+  color: #fff;
+}
+
 .vis-item.vis-selected {
   box-shadow: 0 0 0 2px white;
 }

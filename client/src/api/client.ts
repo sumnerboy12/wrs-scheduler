@@ -9,6 +9,7 @@ import type {
   JobWithPhases,
   LeavePeriod,
   ManagedUser,
+  NonBillablePeriod,
   OidcStatus,
   Phase,
   SendJobSummariesResult,
@@ -92,6 +93,13 @@ export const api = {
   updateLeave: (id: number, data: Partial<LeavePeriod>) =>
     request<LeavePeriod>(`/leave/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteLeave: (id: number) => request<void>(`/leave/${id}`, { method: 'DELETE' }),
+
+  getNonBillable: () => request<NonBillablePeriod[]>('/non-billable'),
+  createNonBillable: (data: Partial<NonBillablePeriod>) =>
+    request<NonBillablePeriod>('/non-billable', { method: 'POST', body: JSON.stringify(data) }),
+  updateNonBillable: (id: number, data: Partial<NonBillablePeriod>) =>
+    request<NonBillablePeriod>(`/non-billable/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteNonBillable: (id: number) => request<void>(`/non-billable/${id}`, { method: 'DELETE' }),
 
   getSummaries: (start: string, end: string) =>
     request<SummariesPayload>(`/summaries?start=${start}&end=${end}`),

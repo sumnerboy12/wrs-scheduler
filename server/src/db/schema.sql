@@ -79,6 +79,22 @@ CREATE TABLE IF NOT EXISTS leave_periods (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- An employee doing real work that isn't chargeable to any job (training,
+-- admin, internal meetings) — unlike leave, they're present and it counts
+-- toward their allocation the same way a job assignment does (see
+-- lib/conflicts.js), it's just not tied to a phase.
+CREATE TABLE IF NOT EXISTS non_billable_periods (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+  category TEXT NOT NULL DEFAULT 'admin' CHECK (category IN ('training', 'admin', 'meeting', 'other')),
+  start_date TEXT NOT NULL,
+  end_date TEXT NOT NULL,
+  allocation_pct INTEGER NOT NULL DEFAULT 100,
+  notes TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT NOT NULL UNIQUE,
@@ -107,3 +123,5 @@ CREATE INDEX IF NOT EXISTS idx_assignments_employee ON assignments(employee_id);
 CREATE INDEX IF NOT EXISTS idx_assignments_dates ON assignments(start_date, end_date);
 CREATE INDEX IF NOT EXISTS idx_leave_periods_employee ON leave_periods(employee_id);
 CREATE INDEX IF NOT EXISTS idx_leave_periods_dates ON leave_periods(start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_non_billable_employee ON non_billable_periods(employee_id);
+CREATE INDEX IF NOT EXISTS idx_non_billable_dates ON non_billable_periods(start_date, end_date);

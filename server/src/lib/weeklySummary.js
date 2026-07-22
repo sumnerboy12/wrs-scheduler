@@ -13,6 +13,7 @@ import {
 export { nextWeekRange, currentWeekKey } from './emailDates.js';
 
 const LEAVE_TYPE_LABELS = { sick: 'Sick', annual: 'Annual', acc: 'ACC', other: 'Other' };
+const NON_BILLABLE_CATEGORY_LABELS = { training: 'Training', admin: 'Admin', meeting: 'Meeting', other: 'Other' };
 
 export const DEFAULT_SUBJECT_TEMPLATE = 'Your Rostr schedule: {{start_date}} – {{end_date}}';
 export const DEFAULT_BODY_TEMPLATE = `Hi {{first_name}},
@@ -44,11 +45,15 @@ export function buildWeeklySummaries(startDate, endDate) {
   const leaveStmt = db.prepare(
     `SELECT * FROM leave_periods WHERE employee_id = ? AND start_date <= ? AND end_date >= ? ORDER BY start_date`
   );
+  const nonBillableStmt = db.prepare(
+    `SELECT * FROM non_billable_periods WHERE employee_id = ? AND start_date <= ? AND end_date >= ? ORDER BY start_date`
+  );
 
   return employees.map((employee) => {
     const items = assignmentStmt.all(employee.id, endDate, startDate);
     const leave = leaveStmt.all(employee.id, endDate, startDate);
-    return { employee, items, leave };
+    const nonBillable = nonBillableStmt.all(employee.id, endDate, startDate);
+    return { employee, items, leave, nonBillable };
   });
 }
 
@@ -131,20 +136,30 @@ export function setAutoSendLastRunWeek(weekKey) {
 // rather than one replacing the other: that combination is exactly the
 // "booked while on leave" conflict flagged elsewhere, and hiding either
 // side of it here would bury the thing they most need to notice.
-// Any note on the underlying assignment/leave row rides along in its own
-// trailing column — left blank when there isn't one, rather than omitting
-// the column entirely, so the table's shape doesn't shift week to week.
-function buildBookingRows(items, leave, startDate, endDate, includeWeekends) {
+// Non-billable time (training, admin, ...) gets its own row too — Job
+// column reads the category, Phase column carries the allocation % if it's
+// not the full day — between leave and job rows: still "at work" unlike
+// leave, but not chargeable to a job either.
+// Any note on the underlying assignment/leave/non-billable row rides along
+// in its own trailing column — left blank when there isn't one, rather
+// than omitting the column entirely, so the table's shape doesn't shift
+// week to week.
+function buildBookingRows(items, leave, nonBillable, startDate, endDate, includeWeekends) {
   return buildDayRows(startDate, endDate, includeWeekends, (day, iso, rows) => {
     const dayItems = items.filter((item) => item.start_date <= iso && item.end_date >= iso);
     const dayLeave = leave.filter((l) => l.start_date <= iso && l.end_date >= iso);
+    const dayNonBillable = nonBillable.filter((n) => n.start_date <= iso && n.end_date >= iso);
 
-    if (dayItems.length === 0 && dayLeave.length === 0) {
+    if (dayItems.length === 0 && dayLeave.length === 0 && dayNonBillable.length === 0) {
       rows.push([day, 'Nothing scheduled', '', '']);
       return;
     }
     for (const l of dayLeave) {
       rows.push([day, 'Leave', LEAVE_TYPE_LABELS[l.type] ?? l.type, l.notes || '']);
+    }
+    for (const n of dayNonBillable) {
+      const allocation = n.allocation_pct < 100 ? `${n.allocation_pct}%` : '';
+      rows.push([day, NON_BILLABLE_CATEGORY_LABELS[n.category] ?? n.category, allocation, n.notes || '']);
     }
     for (const item of dayItems) {
       const allocation = item.allocation_pct < 100 ? ` (${item.allocation_pct}%)` : '';
@@ -173,8 +188,17 @@ function buildJobAddressRows(items) {
     .map((j) => [j.job_name, j.address]);
 }
 
-export function formatSummaryEmail(employee, items, leave, startDate, endDate, template = getTemplate(), includeWeekends = false) {
-  const bookingRows = buildBookingRows(items, leave, startDate, endDate, includeWeekends);
+export function formatSummaryEmail(
+  employee,
+  items,
+  leave,
+  nonBillable,
+  startDate,
+  endDate,
+  template = getTemplate(),
+  includeWeekends = false
+) {
+  const bookingRows = buildBookingRows(items, leave, nonBillable, startDate, endDate, includeWeekends);
   const addressRows = buildJobAddressRows(items);
   const effectiveEndDate = includeWeekends ? endDate : lastWeekdayOnOrBefore(endDate);
 
