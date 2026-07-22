@@ -90,5 +90,23 @@ if (!userColumns.includes('sso_only')) {
   db.exec('ALTER TABLE users ADD COLUMN sso_only INTEGER NOT NULL DEFAULT 0');
 }
 
+// Tags a leave_periods row as synced from an external calendar (see
+// lib/leaveSync.js), keyed by that calendar's own event UID.
+const leaveColumns = db.prepare('PRAGMA table_info(leave_periods)').all().map((c) => c.name);
+if (!leaveColumns.includes('external_id')) {
+  db.exec('ALTER TABLE leave_periods ADD COLUMN external_id TEXT');
+}
+// Marks a synced row as manually corrected — see the column's own comment
+// in schema.sql for why this is a separate flag rather than just clearing
+// external_id.
+if (!leaveColumns.includes('external_locked')) {
+  db.exec('ALTER TABLE leave_periods ADD COLUMN external_locked INTEGER NOT NULL DEFAULT 0');
+}
+// Created here rather than in schema.sql — same reasoning as idx_jobs_client
+// above: on an existing database this runs in the same schema.exec() pass as
+// CREATE TABLE IF NOT EXISTS leave_periods, a no-op on a table that already
+// exists, so external_id wouldn't exist as a column yet at that point.
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_leave_periods_external_id ON leave_periods(external_id)');
+
 export { dataDir };
 export default db;

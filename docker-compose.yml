@@ -27,3 +27,7 @@ services:
       - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
       - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
       - OIDC_REDIRECT_URI=${OIDC_REDIRECT_URI:-}
+      # Optional — periodically imports approved leave from an external
+      # calendar feed. See server/.env.example for details.
+      - LEAVE_CALENDAR_URL=${LEAVE_CALENDAR_URL:-}
+      - LEAVE_SYNC_INTERVAL_MINUTES=${LEAVE_SYNC_INTERVAL_MINUTES:-60}

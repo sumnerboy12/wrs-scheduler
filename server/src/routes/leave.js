@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import db from '../db/index.js';
-import { requireWrite } from '../middleware/auth.js';
+import { requireWrite, requireAdmin } from '../middleware/auth.js';
 import { broadcast } from '../lib/events.js';
+import { syncLeaveCalendar, getLastLeaveSyncResult, isLeaveSyncConfigured } from '../lib/leaveSync.js';
 
 const router = Router();
 
@@ -44,9 +45,16 @@ router.put('/:id', requireWrite, (req, res) => {
   const { employee_id, type, start_date, end_date, notes } = req.body;
   if (type != null && !LEAVE_TYPES.includes(type)) return res.status(400).json({ error: 'invalid leave type' });
 
+  // A manual edit through the app locks the row against external sync if
+  // it came from one (external_id stays, so a re-sync still recognises
+  // this UID as already handled and won't re-import it as a duplicate —
+  // it just won't overwrite or delete it either, see external_locked's own
+  // comment in schema.sql). The sync itself updates rows directly in the
+  // database, bypassing this route entirely, so reaching this handler at
+  // all means a person changed it on purpose.
   db.prepare(
     `UPDATE leave_periods SET
-       employee_id = ?, type = ?, start_date = ?, end_date = ?, notes = ?, updated_at = datetime('now')
+       employee_id = ?, type = ?, start_date = ?, end_date = ?, notes = ?, external_locked = 1, updated_at = datetime('now')
      WHERE id = ?`
   ).run(
     employee_id ?? existing.employee_id,
@@ -67,6 +75,20 @@ router.delete('/:id', requireWrite, (req, res) => {
   db.prepare('DELETE FROM leave_periods WHERE id = ?').run(id);
   broadcast('leave');
   res.status(204).end();
+});
+
+router.get('/sync/status', (req, res) => {
+  res.json({ configured: isLeaveSyncConfigured(), lastResult: getLastLeaveSyncResult() });
+});
+
+router.post('/sync/run', requireAdmin, async (req, res) => {
+  if (!isLeaveSyncConfigured()) return res.status(503).json({ error: 'Leave sync is not configured' });
+  try {
+    const result = await syncLeaveCalendar();
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 export default router;

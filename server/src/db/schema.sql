@@ -75,6 +75,23 @@ CREATE TABLE IF NOT EXISTS leave_periods (
   start_date TEXT NOT NULL,
   end_date TEXT NOT NULL,
   notes TEXT,
+  -- Set only for rows synced in from an external leave calendar (see
+  -- lib/leaveSync.js) — its event UID, so a re-sync can update/remove the
+  -- same row instead of creating a duplicate. NULL for anything entered
+  -- directly in Rostr. Uniqueness is enforced by idx_leave_periods_
+  -- external_id below, not inline — SQLite's ALTER TABLE ADD COLUMN (see
+  -- db/index.js) can't add a UNIQUE constraint directly, so both the
+  -- fresh-install and migrated-database paths use the same index-based
+  -- mechanism instead of two different ones.
+  external_id TEXT,
+  -- Once someone edits a synced row by hand, the sync must never overwrite
+  -- or delete it again — but it must also never re-import the same UID as
+  -- a second, duplicate row. Clearing external_id would solve the first
+  -- problem but cause the second (the sync would no longer recognise the
+  -- UID as already handled); this flag instead keeps external_id in place
+  -- purely as a recognition key while telling the sync to leave the row's
+  -- own fields alone from here on.
+  external_locked INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

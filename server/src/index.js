@@ -25,6 +25,7 @@ import timelineRouter from './routes/timeline.js';
 import summariesRouter from './routes/summaries.js';
 import eventsRouter from './routes/events.js';
 import { startSummaryScheduler } from './lib/summaryScheduler.js';
+import { startLeaveSyncScheduler } from './lib/leaveSync.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -84,3 +85,4 @@ app.listen(PORT, '0.0.0.0', () => {
 });
 
 startSummaryScheduler();
+startLeaveSyncScheduler();
