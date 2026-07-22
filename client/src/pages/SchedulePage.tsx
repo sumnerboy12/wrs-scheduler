@@ -139,15 +139,23 @@ export default function SchedulePage() {
     return true;
   };
 
+  // A completed phase is hidden from the Schedule entirely — its group/bars
+  // in By Job mode, and any assignment bars against it in By Employee mode.
+  const completedPhaseIds = useMemo(
+    () => new Set((data?.phases ?? []).filter((p) => p.complete).map((p) => p.id)),
+    [data],
+  );
+
   const visibleAssignments = useMemo(() => {
     if (!data) return [];
     return data.assignments.filter((a) => {
+      if (completedPhaseIds.has(a.phase_id)) return false;
       const job = jobsById.get(a.job_id!);
       if (!job) return false;
       return jobVisible(job);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, jobsById, statusFilter, search]);
+  }, [data, jobsById, statusFilter, search, completedPhaseIds]);
 
   // Capacity overflow depends only on the raw data (every job/phase/
   // assignment, not whatever the user currently has searched/filtered
@@ -202,7 +210,7 @@ export default function SchedulePage() {
       // without fighting the existing header-vs-phase shading.
       const altClass = jobIndex % 2 === 1 ? ' tl-row-alt' : '';
       jobIndex++;
-      const jobPhases = data.phases.filter((p) => p.job_id === job.id);
+      const jobPhases = data.phases.filter((p) => p.job_id === job.id && !p.complete);
       // Peak concurrent actual staff across the job's timeline (distinct
       // employees actually working on the same day, maxed over every
       // day) — not a flat distinct count across the whole job, which
@@ -309,7 +317,7 @@ export default function SchedulePage() {
 
     return { groups, items };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, groupMode, visibleAssignments, jobsById, employeesById, statusFilter, itemTypeFilter, search, capacityOverflowItems, collapsedJobIds]);
+  }, [data, groupMode, visibleAssignments, jobsById, employeesById, statusFilter, itemTypeFilter, search, capacityOverflowItems, collapsedJobIds, completedPhaseIds]);
 
   const applyPreset = (p: ZoomPreset) => {
     setPreset(p);
@@ -908,14 +916,19 @@ function buildCapacityOverflowItems(data: TimelinePayload): TLItem[] {
   if (totalEmployees === 0) return [];
 
   const { rangeStart, rangeEnd } = getScheduleBackgroundRange();
-  const estimatedPhases = data.phases.filter((p) => p.estimated_staff);
+  // A completed phase's estimate/staff no longer competes for capacity —
+  // same reasoning as hiding it from the Schedule itself.
+  const completedPhaseIds = new Set(data.phases.filter((p) => p.complete).map((p) => p.id));
+  const estimatedPhases = data.phases.filter((p) => p.estimated_staff && !p.complete);
   const activeLeave = data.leave.filter((l) => activeEmployeeIds.has(l.employee_id));
   const activeNonBillable = data.nonBillable.filter((n) => activeEmployeeIds.has(n.employee_id));
 
   const overflowDays: string[] = [];
   for (let d = new Date(rangeStart); d < rangeEnd; d = addDays(d, 1)) {
     const iso = toISODate(d);
-    const activeAssignments = data.assignments.filter((a) => a.start_date <= iso && a.end_date >= iso);
+    const activeAssignments = data.assignments.filter(
+      (a) => a.start_date <= iso && a.end_date >= iso && !completedPhaseIds.has(a.phase_id),
+    );
     const realCount = new Set(activeAssignments.map((a) => a.employee_id)).size;
 
     const unavailableCount = new Set([

@@ -31,6 +31,9 @@ Job addresses:
 // Every active employee's bookings and leave that overlap [startDate,
 // endDate] — the shared query behind both the preview screen and the
 // actual send, so what an admin previews is exactly what goes out.
+// Bookings on a phase marked complete are excluded — same reasoning as
+// hiding them from the Schedule, an employee doesn't need a reminder about
+// work that's already finished.
 export function buildWeeklySummaries(startDate, endDate) {
   const employees = db.prepare('SELECT * FROM employees WHERE active = 1 ORDER BY name').all();
 
@@ -39,7 +42,7 @@ export function buildWeeklySummaries(startDate, endDate) {
      FROM assignments a
      JOIN phases p ON p.id = a.phase_id
      JOIN jobs j ON j.id = p.job_id
-     WHERE a.employee_id = ? AND a.start_date <= ? AND a.end_date >= ?
+     WHERE a.employee_id = ? AND a.start_date <= ? AND a.end_date >= ? AND p.complete = 0
      ORDER BY a.start_date`
   );
   const leaveStmt = db.prepare(

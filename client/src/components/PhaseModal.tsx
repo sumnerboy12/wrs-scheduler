@@ -17,6 +17,7 @@ export default function PhaseModal({ phase, defaultSequence, onClose, onSave, on
   const [endDate, setEndDate] = useState(phase?.end_date ?? '');
   const [estimatedStaff, setEstimatedStaff] = useState(phase?.estimated_staff != null ? String(phase.estimated_staff) : '');
   const [notes, setNotes] = useState(phase?.notes ?? '');
+  const [complete, setComplete] = useState(phase?.complete === 1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +36,7 @@ export default function PhaseModal({ phase, defaultSequence, onClose, onSave, on
         end_date: endDate,
         estimated_staff: estimatedStaff.trim() ? Number(estimatedStaff) : null,
         notes,
+        complete: complete ? 1 : 0,
       });
       onClose();
     } catch (e) {
@@ -90,6 +92,20 @@ export default function PhaseModal({ phase, defaultSequence, onClose, onSave, on
           <label>Notes</label>
           <textarea rows={2} value={notes ?? ''} onChange={(e) => setNotes(e.target.value)} disabled={readOnly} />
         </div>
+        {phase && (
+          <div className="field">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, flexDirection: 'row' }}>
+              <input
+                type="checkbox"
+                checked={complete}
+                onChange={(e) => setComplete(e.target.checked)}
+                style={{ width: 'auto' }}
+                disabled={readOnly}
+              />
+              Complete — hide from the Schedule
+            </label>
+          </div>
+        )}
 
         {error && <div style={{ color: 'var(--danger)', marginBottom: 12 }}>{error}</div>}
 

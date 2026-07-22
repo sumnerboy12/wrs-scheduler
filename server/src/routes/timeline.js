@@ -32,7 +32,13 @@ router.get('/', (req, res) => {
   const leave = db.prepare('SELECT * FROM leave_periods ORDER BY start_date').all();
   const nonBillable = db.prepare('SELECT * FROM non_billable_periods ORDER BY start_date').all();
 
-  const { assignmentConflictIds, leaveConflictIds, nonBillableConflictIds } = computeConflictIds(assignments, leave, nonBillable);
+  // A completed phase's booking no longer competes for the employee's
+  // capacity — same reasoning as excluding it from the Schedule itself —
+  // so it's left out of the conflict pool entirely, both as something that
+  // can itself be flagged and as competition for anyone else's allocation.
+  const completedPhaseIds = new Set(db.prepare('SELECT id FROM phases WHERE complete = 1').all().map((p) => p.id));
+  const conflictCandidates = assignments.filter((a) => !completedPhaseIds.has(a.phase_id));
+  const { assignmentConflictIds, leaveConflictIds, nonBillableConflictIds } = computeConflictIds(conflictCandidates, leave, nonBillable);
   const assignmentsWithConflict = assignments.map((a) => ({ ...a, conflict: assignmentConflictIds.has(a.id) }));
   const leaveWithConflict = leave.map((l) => ({ ...l, conflict: leaveConflictIds.has(l.id) }));
   const nonBillableWithConflict = nonBillable.map((n) => ({ ...n, conflict: nonBillableConflictIds.has(n.id) }));

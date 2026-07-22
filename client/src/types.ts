@@ -50,6 +50,7 @@ export interface Phase {
   end_date: string;
   estimated_staff: number | null;
   notes: string | null;
+  complete: 0 | 1;
 }
 
 export interface Assignment {

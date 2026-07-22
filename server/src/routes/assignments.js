@@ -20,7 +20,12 @@ router.get('/', (req, res) => {
   const nonBillable = employee_id
     ? db.prepare('SELECT * FROM non_billable_periods WHERE employee_id = ?').all(Number(employee_id))
     : db.prepare('SELECT * FROM non_billable_periods').all();
-  const { assignmentConflictIds } = computeConflictIds(rows, leave, nonBillable);
+  // Same exclusion as the timeline endpoint — a completed phase's booking
+  // no longer competes for capacity, so it shouldn't be flagged and
+  // shouldn't count against anyone else's allocation either.
+  const completedPhaseIds = new Set(db.prepare('SELECT id FROM phases WHERE complete = 1').all().map((p) => p.id));
+  const conflictCandidates = rows.filter((r) => !completedPhaseIds.has(r.phase_id));
+  const { assignmentConflictIds } = computeConflictIds(conflictCandidates, leave, nonBillable);
   res.json(rows.map((r) => ({ ...r, conflict: assignmentConflictIds.has(r.id) })));
 });
 

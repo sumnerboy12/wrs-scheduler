@@ -24,6 +24,8 @@ Here's who's booked on {{job_name}} for {{start_date}} – {{end_date}}:
 // the preview screen and the actual send. Excludes On Hold/Complete/Lost
 // jobs, mirroring the "Active" status filter used on the Schedule and Jobs
 // screens — a supervisor doesn't need pinging about parked or closed-out work.
+// Also excludes bookings on any individual phase marked complete, even on
+// an otherwise-active job — same reasoning as hiding them from the Schedule.
 export function buildJobCrewSummaries(startDate, endDate) {
   const jobs = db
     .prepare(
@@ -40,7 +42,7 @@ export function buildJobCrewSummaries(startDate, endDate) {
      FROM assignments a
      JOIN phases p ON p.id = a.phase_id
      JOIN employees emp ON emp.id = a.employee_id
-     WHERE p.job_id = ? AND a.start_date <= ? AND a.end_date >= ?
+     WHERE p.job_id = ? AND a.start_date <= ? AND a.end_date >= ? AND p.complete = 0
      ORDER BY p.sequence, p.start_date, emp.name COLLATE NOCASE`
   );
 

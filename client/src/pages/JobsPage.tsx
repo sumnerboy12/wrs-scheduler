@@ -329,9 +329,16 @@ export default function JobsPage() {
                 </thead>
                 <tbody>
                   {detail.phases.map((phase) => (
-                    <tr key={phase.id}>
+                    <tr key={phase.id} style={{ opacity: phase.complete ? 0.5 : 1 }}>
                       <td>{phase.sequence}</td>
-                      <td>{phase.name}</td>
+                      <td>
+                        {phase.name}
+                        {phase.complete === 1 && (
+                          <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text-dim)' }}>
+                            Complete
+                          </span>
+                        )}
+                      </td>
                       <td>{formatShortDate(phase.start_date)}</td>
                       <td>{formatShortDate(phase.end_date)}</td>
                       <td>
