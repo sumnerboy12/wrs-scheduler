@@ -23,7 +23,6 @@ export default function EmployeesPage() {
   const [showInactive, setShowInactive] = useState(false);
 
   const load = () => {
-    setLoading(true);
     api.getEmployees().then((data) => {
       setEmployees(data);
       setLoading(false);

@@ -202,14 +202,27 @@ const TimelineView = forwardRef<TimelineViewHandle, Props>(function TimelineView
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Patch the DataSets in place rather than clear()+add() on every change —
+  // clearing briefly empties the DataSet, which collapses vis-timeline's
+  // row area to zero height and resets its internal vertical scroll
+  // position to the top; it doesn't get restored once rows come back.
+  // update() upserts by id (creates rows that are new, replaces fields on
+  // ones that already exist), so we only need to separately remove() ids
+  // that no longer appear.
   useEffect(() => {
-    groupsDataSet.current.clear();
-    groupsDataSet.current.add(groups);
+    const ds = groupsDataSet.current;
+    const nextIds = new Set(groups.map((g) => g.id));
+    const staleIds = ds.getIds().filter((id) => !nextIds.has(id as string));
+    if (staleIds.length) ds.remove(staleIds);
+    if (groups.length) ds.update(groups);
   }, [groups]);
 
   useEffect(() => {
-    itemsDataSet.current.clear();
-    itemsDataSet.current.add(items);
+    const ds = itemsDataSet.current;
+    const nextIds = new Set(items.map((i) => i.id));
+    const staleIds = ds.getIds().filter((id) => !nextIds.has(id as number | string));
+    if (staleIds.length) ds.remove(staleIds);
+    if (items.length) ds.update(items);
   }, [items]);
 
   useEffect(() => {

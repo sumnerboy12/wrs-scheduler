@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import type { Client, Employee, Job, JobStatus, JobWithPhases, Phase } from '../types';
@@ -59,7 +59,24 @@ export default function JobsPage() {
 
   useEffect(() => savePersistedStatusFilter(statusFilter), [statusFilter]);
 
-  const loadJobs = () => api.getJobs().then(setJobs);
+  // Reloading jobs (e.g. after closing an edit modal) replaces `jobs` with a
+  // fresh array, and something about that reorders/reconciles the list in a
+  // way that resets its scroll to the top. Rather than chase the exact
+  // mechanism, capture the list's scroll position right before each reload
+  // and restore it once the new data has rendered.
+  const jobListRef = useRef<HTMLDivElement>(null);
+  const pendingJobListScrollTop = useRef<number | null>(null);
+  const loadJobs = () => {
+    if (jobListRef.current) pendingJobListScrollTop.current = jobListRef.current.scrollTop;
+    return api.getJobs().then(setJobs);
+  };
+
+  useLayoutEffect(() => {
+    if (pendingJobListScrollTop.current != null && jobListRef.current) {
+      jobListRef.current.scrollTop = pendingJobListScrollTop.current;
+      pendingJobListScrollTop.current = null;
+    }
+  }, [jobs]);
   const loadClients = () => api.getClients().then(setClients);
   const loadEmployees = () => api.getEmployees().then((data) => setEmployees(data.filter((e) => e.active)));
   const loadDetail = (id: number) => api.getJob(id).then(setDetail);
@@ -149,7 +166,7 @@ export default function JobsPage() {
           )}
           </div>
         </div>
-        <div style={{ overflowY: 'auto', flex: 1 }}>
+        <div ref={jobListRef} style={{ overflowY: 'auto', flex: 1 }}>
           {visibleJobs.map((job) => {
             const client = clientFor(job);
             const jobColor = client?.color ?? NO_CLIENT_COLOR;
