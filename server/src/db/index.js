@@ -26,6 +26,9 @@ const phaseColumns = db.prepare('PRAGMA table_info(phases)').all().map((c) => c.
 if (!phaseColumns.includes('estimated_staff')) {
   db.exec('ALTER TABLE phases ADD COLUMN estimated_staff INTEGER');
 }
+if (!phaseColumns.includes('complete')) {
+  db.exec('ALTER TABLE phases ADD COLUMN complete INTEGER NOT NULL DEFAULT 0');
+}
 
 // Jobs used to carry their own free-text client_name + colour; both moved
 // onto a proper clients table (name/colour/notes) that jobs link to via

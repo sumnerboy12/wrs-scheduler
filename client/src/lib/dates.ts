@@ -67,6 +67,37 @@ export function formatShortDate(isoDate: string): string {
   return `${WEEKDAY_ABBR[d.getDay()]} ${day}/${month}`;
 }
 
+// Parses a date typed/pasted into an imported spreadsheet cell. Tries ISO
+// (YYYY-MM-DD) first, then day/month/year with '/' or '-' separators (NZ's
+// usual written convention), then falls back to whatever the JS Date
+// constructor can make of it (e.g. "22 May 2026"). Returns null rather than
+// throwing so a bad cell just surfaces as an ordinary per-row import
+// failure instead of crashing the whole import.
+export function parseFlexibleDate(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (isoMatch) {
+    const [, y, m, d] = isoMatch;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+
+  const dmyMatch = trimmed.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+  if (dmyMatch) {
+    const [, d, m, yRaw] = dmyMatch;
+    const y = yRaw.length === 2 ? 2000 + Number(yRaw) : Number(yRaw);
+    const date = new Date(y, Number(m) - 1, Number(d));
+    // Date rolls over invalid day/month combos (e.g. 31/02) rather than
+    // erroring — catch that here instead of silently importing March 2nd.
+    if (date.getMonth() !== Number(m) - 1) return null;
+    return toISODate(date);
+  }
+
+  const fallback = new Date(trimmed);
+  return isNaN(fallback.getTime()) ? null : toISODate(fallback);
+}
+
 export type ZoomPreset = 'day' | 'week' | 'month' | 'quarter';
 
 export function presetWindow(preset: ZoomPreset, center: Date): { start: Date; end: Date } {

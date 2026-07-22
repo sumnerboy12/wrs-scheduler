@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { parseDelimited, autoMatchColumn } from '../lib/csv';
 
 export interface ImportField {
@@ -12,6 +12,11 @@ interface Props {
   title: string;
   fields: ImportField[];
   helpText?: string;
+  // Page-specific controls (e.g. a fallback value for a field that's often
+  // left out of the pasted data) rendered between the column mapping and
+  // the row preview. Generic here so this component doesn't need to know
+  // what any particular caller wants to default.
+  extraContent?: ReactNode;
   onClose: () => void;
   onImportRow: (values: Record<string, string>, rowNumber: number) => Promise<void>;
   onDone: () => void;
@@ -22,7 +27,7 @@ interface Failure {
   message: string;
 }
 
-export default function ImportModal({ title, fields, helpText, onClose, onImportRow, onDone }: Props) {
+export default function ImportModal({ title, fields, helpText, extraContent, onClose, onImportRow, onDone }: Props) {
   const [text, setText] = useState('');
   const [mapping, setMapping] = useState<Record<string, number>>({});
   const [importing, setImporting] = useState(false);
@@ -132,6 +137,8 @@ export default function ImportModal({ title, fields, helpText, onClose, onImport
                     </div>
                   ))}
                 </div>
+
+                {extraContent}
 
                 {dataRows.length > 0 && (
                   <div style={{ marginBottom: 16, maxHeight: 180, overflow: 'auto' }} className="card">

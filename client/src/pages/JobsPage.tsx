@@ -8,7 +8,7 @@ import PhaseModal from '../components/PhaseModal';
 import StatusFilterDropdown, { ALL_STATUSES } from '../components/StatusFilterDropdown';
 import ImportModal, { type ImportField } from '../components/ImportModal';
 import { matchJobStatus } from '../lib/jobStatus';
-import { formatShortDate } from '../lib/dates';
+import { formatShortDate, parseFlexibleDate } from '../lib/dates';
 import { NO_CLIENT_COLOR } from '../lib/colors';
 import { useLiveRefresh } from '../lib/useLiveRefresh';
 
@@ -42,6 +42,18 @@ const JOB_IMPORT_FIELDS: ImportField[] = [
   { key: 'notes', label: 'Notes', aliases: ['notes', 'note', 'comments', 'description'] },
 ];
 
+// Start/end aren't `required` here — a row missing either falls back to
+// the default start/end dates set in the import UI (see PhasesImportModal
+// below), so this is often just a list of phase names.
+const PHASE_IMPORT_FIELDS: ImportField[] = [
+  { key: 'name', label: 'Phase name', required: true, aliases: ['name', 'phase', 'phase name', 'stage', 'title'] },
+  { key: 'start_date', label: 'Start date', aliases: ['start date', 'start', 'from'] },
+  { key: 'end_date', label: 'End date', aliases: ['end date', 'end', 'to', 'finish date'] },
+  { key: 'sequence', label: 'Order', aliases: ['order', 'sequence', 'seq', '#'] },
+  { key: 'estimated_staff', label: 'Estimated staff', aliases: ['estimated staff', 'estimate', 'staff', 'crew size'] },
+  { key: 'notes', label: 'Notes', aliases: ['notes', 'note', 'comments', 'description'] },
+];
+
 export default function JobsPage() {
   const { isReadOnly } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -53,6 +65,9 @@ export default function JobsPage() {
   const [showImportJobs, setShowImportJobs] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [showAddPhase, setShowAddPhase] = useState(false);
+  const [showImportPhases, setShowImportPhases] = useState(false);
+  const [defaultPhaseStart, setDefaultPhaseStart] = useState('');
+  const [defaultPhaseEnd, setDefaultPhaseEnd] = useState('');
   const [editingPhase, setEditingPhase] = useState<Phase | null>(null);
   const [statusFilter, setStatusFilter] = useState<JobStatus[]>(loadPersistedStatusFilter);
   const [search, setSearch] = useState('');
@@ -103,6 +118,12 @@ export default function JobsPage() {
     importClientCache.current.set(key, created.id);
     return created.id;
   };
+
+  // Running sequence counter for one phase-import pass — rows without an
+  // explicit Order column get appended after whatever phases the job
+  // already has, in paste order. A ref (not state) since rows import
+  // sequentially and each needs the count as of the row before it.
+  const importPhaseSequenceRef = useRef(0);
 
   useEffect(() => {
     loadJobs();
@@ -276,9 +297,22 @@ export default function JobsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 28 }}>
               <h2 style={{ fontSize: 16, margin: 0 }}>Phases</h2>
               {!isReadOnly && (
-                <button className="btn btn-primary" onClick={() => setShowAddPhase(true)}>
-                  + Add Phase
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    className="btn"
+                    onClick={() => {
+                      importPhaseSequenceRef.current = detail.phases.length;
+                      setDefaultPhaseStart('');
+                      setDefaultPhaseEnd('');
+                      setShowImportPhases(true);
+                    }}
+                  >
+                    Import
+                  </button>
+                  <button className="btn btn-primary" onClick={() => setShowAddPhase(true)}>
+                    + Add Phase
+                  </button>
+                </div>
               )}
             </div>
 
@@ -389,6 +423,57 @@ export default function JobsPage() {
             await api.createPhase(detail.id, data);
             loadDetail(detail.id);
           }}
+        />
+      )}
+      {showImportPhases && detail && (
+        <ImportModal
+          title={`Import Phases — ${detail.name}`}
+          fields={PHASE_IMPORT_FIELDS}
+          helpText="Paste columns like Phase name, Start date, End date, Order, Estimated staff, Notes — or just a list of phase names and set default dates below."
+          extraContent={
+            <div className="card" style={{ padding: 12, marginBottom: 16 }}>
+              <div style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 8 }}>
+                Default dates — used for any row with no start/end date of its own.
+              </div>
+              <div className="row">
+                <div className="field">
+                  <label>Default start date</label>
+                  <input type="date" value={defaultPhaseStart} onChange={(e) => setDefaultPhaseStart(e.target.value)} />
+                </div>
+                <div className="field">
+                  <label>Default end date</label>
+                  <input type="date" value={defaultPhaseEnd} onChange={(e) => setDefaultPhaseEnd(e.target.value)} />
+                </div>
+              </div>
+            </div>
+          }
+          onClose={() => setShowImportPhases(false)}
+          onImportRow={async (values) => {
+            const rowStart = values.start_date.trim() ? parseFlexibleDate(values.start_date) : null;
+            const rowEnd = values.end_date.trim() ? parseFlexibleDate(values.end_date) : null;
+            if (values.start_date.trim() && !rowStart) throw new Error(`Could not read start date "${values.start_date}"`);
+            if (values.end_date.trim() && !rowEnd) throw new Error(`Could not read end date "${values.end_date}"`);
+
+            const startDate = rowStart ?? defaultPhaseStart;
+            const endDate = rowEnd ?? defaultPhaseEnd;
+            if (!startDate) throw new Error('No start date in the row, and no default start date set');
+            if (!endDate) throw new Error('No end date in the row, and no default end date set');
+            if (endDate < startDate) throw new Error('End date is before the start date');
+
+            importPhaseSequenceRef.current += 1;
+            const sequence = values.sequence.trim() ? Number(values.sequence) : importPhaseSequenceRef.current;
+            const estimatedStaff = values.estimated_staff.trim() ? Number(values.estimated_staff) : null;
+
+            await api.createPhase(detail.id, {
+              name: values.name,
+              sequence: Number.isNaN(sequence) ? importPhaseSequenceRef.current : sequence,
+              start_date: startDate,
+              end_date: endDate,
+              estimated_staff: estimatedStaff != null && !Number.isNaN(estimatedStaff) ? estimatedStaff : null,
+              notes: values.notes || null,
+            });
+          }}
+          onDone={() => loadDetail(detail.id)}
         />
       )}
       {editingPhase && detail && (

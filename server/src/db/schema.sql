@@ -50,6 +50,11 @@ CREATE TABLE IF NOT EXISTS phases (
   -- capacity without committing specific people to unconfirmed work.
   estimated_staff INTEGER,
   notes TEXT,
+  -- Finished phases are hidden from the Schedule's Gantt view entirely
+  -- (both their own row/bars and any assignment bars against them) so the
+  -- timeline doesn't stay cluttered with work that's already done, while
+  -- still showing up in the Jobs page's own phase list for reference.
+  complete INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
