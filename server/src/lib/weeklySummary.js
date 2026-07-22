@@ -6,6 +6,7 @@ import {
   buildDayRows,
   renderDayTableText,
   renderDayTableHtml,
+  wrapEmailHtmlBody,
   lastWeekdayOnOrBefore,
 } from './emailDates.js';
 
@@ -18,7 +19,11 @@ export const DEFAULT_BODY_TEMPLATE = `Hi {{first_name}},
 
 Here's what you're booked on for {{start_date}} – {{end_date}}:
 
-{{bookings}}
+{{job_bookings}}
+
+Job addresses:
+
+{{job_addresses}}
 
 — Rostr`;
 
@@ -29,7 +34,7 @@ export function buildWeeklySummaries(startDate, endDate) {
   const employees = db.prepare('SELECT * FROM employees WHERE active = 1 ORDER BY name').all();
 
   const assignmentStmt = db.prepare(
-    `SELECT a.*, p.name AS phase_name, j.name AS job_name, j.code AS job_code
+    `SELECT a.*, p.name AS phase_name, j.id AS job_id, j.name AS job_name, j.code AS job_code, j.address AS job_address
      FROM assignments a
      JOIN phases p ON p.id = a.phase_id
      JOIN jobs j ON j.id = p.job_id
@@ -149,9 +154,28 @@ function buildBookingRows(items, leave, startDate, endDate, includeWeekends) {
 }
 
 const BOOKING_HEADERS = ['Day', 'Job', 'Phase', 'Notes'];
+const JOB_ADDRESS_HEADERS = ['Job', 'Address'];
+
+// One row per distinct job the employee is booked on this range that
+// actually has an address on file (not per assignment/day) — a reference
+// list for "where am I going", separate from the day-by-day table above.
+// Deduped by job id since two jobs could share a name; jobs without an
+// address are skipped entirely rather than shown with a blank cell, since
+// an empty address isn't useful to list.
+function buildJobAddressRows(items) {
+  const byJobId = new Map();
+  for (const item of items) {
+    if (!item.job_address) continue;
+    if (!byJobId.has(item.job_id)) byJobId.set(item.job_id, { job_name: item.job_name, address: item.job_address });
+  }
+  return Array.from(byJobId.values())
+    .sort((a, b) => a.job_name.localeCompare(b.job_name))
+    .map((j) => [j.job_name, j.address]);
+}
 
 export function formatSummaryEmail(employee, items, leave, startDate, endDate, template = getTemplate(), includeWeekends = false) {
-  const rows = buildBookingRows(items, leave, startDate, endDate, includeWeekends);
+  const bookingRows = buildBookingRows(items, leave, startDate, endDate, includeWeekends);
+  const addressRows = buildJobAddressRows(items);
   const effectiveEndDate = includeWeekends ? endDate : lastWeekdayOnOrBefore(endDate);
 
   const values = {
@@ -159,7 +183,8 @@ export function formatSummaryEmail(employee, items, leave, startDate, endDate, t
     full_name: employee.name,
     start_date: formatDate(startDate),
     end_date: formatDate(effectiveEndDate),
-    bookings: renderDayTableText(BOOKING_HEADERS, rows),
+    job_bookings: renderDayTableText(BOOKING_HEADERS, bookingRows),
+    job_addresses: addressRows.length ? renderDayTableText(JOB_ADDRESS_HEADERS, addressRows) : 'No addresses defined for any of your jobs',
   };
 
   const htmlValues = {
@@ -167,10 +192,11 @@ export function formatSummaryEmail(employee, items, leave, startDate, endDate, t
     full_name: escapeHtml(values.full_name),
     start_date: escapeHtml(values.start_date),
     end_date: escapeHtml(values.end_date),
-    bookings: renderDayTableHtml(BOOKING_HEADERS, rows),
+    job_bookings: renderDayTableHtml(BOOKING_HEADERS, bookingRows),
+    job_addresses: addressRows.length ? renderDayTableHtml(JOB_ADDRESS_HEADERS, addressRows) : 'No addresses defined for any of your jobs',
   };
 
-  const htmlBody = interpolate(escapeHtml(template.body), htmlValues).replace(/\n/g, '<br>');
+  const htmlBody = wrapEmailHtmlBody(interpolate(escapeHtml(template.body), htmlValues));
 
   return {
     subject: interpolate(template.subject, values),

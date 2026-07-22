@@ -6,6 +6,7 @@ import {
   buildDayRows,
   renderDayTableText,
   renderDayTableHtml,
+  wrapEmailHtmlBody,
   lastWeekdayOnOrBefore,
 } from './emailDates.js';
 
@@ -152,7 +153,7 @@ export function formatJobSummaryEmail(job, items, startDate, endDate, template =
 
   const values = {
     supervisor_first_name: job.supervisor_name.split(' ')[0],
-    supervisor_name: job.supervisor_name,
+    supervisor_full_name: job.supervisor_name,
     job_name: job.name,
     job_code: job.code || '',
     start_date: formatDate(startDate),
@@ -162,7 +163,7 @@ export function formatJobSummaryEmail(job, items, startDate, endDate, template =
 
   const htmlValues = {
     supervisor_first_name: escapeHtml(values.supervisor_first_name),
-    supervisor_name: escapeHtml(values.supervisor_name),
+    supervisor_full_name: escapeHtml(values.supervisor_full_name),
     job_name: escapeHtml(values.job_name),
     job_code: escapeHtml(values.job_code),
     start_date: escapeHtml(values.start_date),
@@ -170,7 +171,7 @@ export function formatJobSummaryEmail(job, items, startDate, endDate, template =
     crew: renderDayTableHtml(CREW_HEADERS, rows),
   };
 
-  const htmlBody = interpolate(escapeHtml(template.body), htmlValues).replace(/\n/g, '<br>');
+  const htmlBody = wrapEmailHtmlBody(interpolate(escapeHtml(template.body), htmlValues));
 
   return {
     subject: interpolate(template.subject, values),

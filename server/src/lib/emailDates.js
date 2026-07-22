@@ -120,7 +120,7 @@ export function renderDayTableHtml(headers, rows) {
     )
     .join('');
   return (
-    `<table style="border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-size:14px;">` +
+    `<table style="border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-size:14px;margin:0;">` +
     `<thead><tr>${headers.map(headerCell).join('')}</tr></thead>` +
     `<tbody>${body}</tbody></table>`
   );
@@ -128,6 +128,29 @@ export function renderDayTableHtml(headers, rows) {
 
 export function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Wraps interpolated HTML so every block placeholder value (a rendered
+// <table>...</table> — {{job_bookings}}, {{job_addresses}}, {{crew}}) ends
+// up as the sole content of its own row in one outer layout table, rather
+// than sitting inline within flowing paragraph text. Outlook's Word
+// rendering engine adds its own implicit paragraph spacing before and
+// after a <table> it finds inline in text — no margin/padding on the inner
+// table can suppress that, since it's Word's own paragraph model doing it,
+// not CSS. A table is never "inline in text" once it's the only thing in
+// its own <td>, so that behaviour never triggers. Plain-text segments
+// between placeholders become their own row too, with their newlines
+// turned into <br> exactly as before — a blank line the template asked
+// for between two tables still shows up as its own (short) row of breaks.
+export function wrapEmailHtmlBody(interpolatedHtml) {
+  const parts = interpolatedHtml.split(/(<table[\s\S]*?<\/table>)/).filter((part) => part.length > 0);
+  const rows = parts
+    .map((part) => {
+      const content = part.startsWith('<table') ? part : part.replace(/\n/g, '<br>');
+      return `<tr><td style="padding:0;">${content}</td></tr>`;
+    })
+    .join('');
+  return `<table role="presentation" style="border-collapse:collapse;width:100%;"><tbody>${rows}</tbody></table>`;
 }
 
 // {{placeholder}} substitution — deliberately simple (no loops/conditionals

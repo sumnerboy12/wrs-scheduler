@@ -11,12 +11,13 @@ export const EMPLOYEE_SUMMARY_PLACEHOLDERS: SummaryPlaceholder[] = [
   { token: '{{full_name}}', description: "employee's full name" },
   { token: '{{start_date}}', description: 'range start, e.g. Mon 20 Jul' },
   { token: '{{end_date}}', description: 'range end, e.g. Sun 26 Jul' },
-  { token: '{{bookings}}', description: 'the rendered list of bookings and leave (or "nothing scheduled")' },
+  { token: '{{job_bookings}}', description: 'the rendered list of bookings and leave (or "nothing scheduled")' },
+  { token: '{{job_addresses}}', description: 'a table of distinct jobs booked this range and their addresses' },
 ];
 
 export const JOB_SUMMARY_PLACEHOLDERS: SummaryPlaceholder[] = [
   { token: '{{supervisor_first_name}}', description: "supervisor's first name" },
-  { token: '{{supervisor_name}}', description: "supervisor's full name" },
+  { token: '{{supervisor_full_name}}', description: "supervisor's full name" },
   { token: '{{job_name}}', description: 'the job name' },
   { token: '{{job_code}}', description: 'the job code (blank for Pipeline/Quoted jobs)' },
   { token: '{{start_date}}', description: 'range start, e.g. Mon 20 Jul' },
