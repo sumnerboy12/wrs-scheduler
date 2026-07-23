@@ -426,7 +426,7 @@ tbody tr:nth-child(even) {
 }
 
 .vis-time-axis .vis-grid.vis-minor {
-  border-color: #202940 !important;
+  border-color: rgba(255, 255, 255, 0.045) !important;
 }
 
 .vis-time-axis .vis-grid.vis-major {
