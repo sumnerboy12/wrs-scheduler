@@ -93,20 +93,32 @@ export default function EmployeeSummariesTab() {
     setError(null);
     setResults(null);
     api
-      .getSummaries(start, end)
+      .getSummaries(start, end, includeWeekends)
       .then((data) => {
         setEmployees(data.employees);
         setMailConfigured(data.mailConfigured);
         // Pre-check anyone who actually has bookings or leave this range —
         // an empty summary is more often "nothing to say" than "please
-        // email them".
-        setSelected(new Set(data.employees.filter((e) => e.items.length > 0 || e.leave.length > 0).map((e) => e.id)));
+        // email them". Someone on leave for the entire range is excluded
+        // even though they technically have leave rows — there's nothing
+        // else to report either way, so the email would just be noise
+        // (still there to tick by hand if that's actually wanted).
+        setSelected(
+          new Set(
+            data.employees
+              .filter((e) => (e.items.length > 0 || e.leave.length > 0) && !e.on_leave_full_period)
+              .map((e) => e.id)
+          )
+        );
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, [start, end]);
+  // includeWeekends affects on_leave_full_period (a Mon–Fri-only leave
+  // span counts as "full period" only when weekends aren't part of the
+  // email), so toggling it needs a refetch, not just a local re-render.
+  useEffect(load, [start, end, includeWeekends]);
   useEffect(() => savePersistedRange({ start, end }), [start, end]);
   useEffect(() => {
     try {
@@ -306,6 +318,11 @@ export default function EmployeeSummariesTab() {
                               {item.allocation_pct < 100 ? ` (${item.allocation_pct}%)` : ''}
                             </div>
                           ))}
+                          {emp.on_leave_full_period && (
+                            <div style={{ fontSize: 12, color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                              On leave for the whole period — not ticked by default
+                            </div>
+                          )}
                         </div>
                       )}
                     </td>

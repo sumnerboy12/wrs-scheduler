@@ -27,9 +27,14 @@ async function sendAutoSummaries(includeWeekends) {
   // Summaries screen pre-checks — nobody wants a weekly "nothing scheduled"
   // email if that's genuinely all it would ever say. Leave or non-billable
   // time alone still counts — someone with no job bookings but a week of
-  // leave or training still wants that email.
-  const summaries = buildWeeklySummaries(start, end).filter(
-    (s) => (s.items.length > 0 || s.leave.length > 0 || s.nonBillable.length > 0) && s.employee.email
+  // leave or training still wants that email — unless the leave covers the
+  // *entire* range, in which case there's truly nothing to report either
+  // way (they're out the whole period) and the email is just noise.
+  const summaries = buildWeeklySummaries(start, end, includeWeekends).filter(
+    (s) =>
+      (s.items.length > 0 || s.leave.length > 0 || s.nonBillable.length > 0) &&
+      !s.onLeaveFullPeriod &&
+      s.employee.email
   );
 
   for (const { employee, items, leave, nonBillable } of summaries) {

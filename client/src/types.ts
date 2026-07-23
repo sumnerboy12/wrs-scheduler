@@ -172,6 +172,7 @@ export interface EmployeeSummary {
   items: SummaryItem[];
   leave: SummaryLeaveItem[];
   nonBillable: SummaryNonBillableItem[];
+  on_leave_full_period: boolean;
 }
 
 export interface SummariesPayload {

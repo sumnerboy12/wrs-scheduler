@@ -101,8 +101,8 @@ export const api = {
     request<NonBillablePeriod>(`/non-billable/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteNonBillable: (id: number) => request<void>(`/non-billable/${id}`, { method: 'DELETE' }),
 
-  getSummaries: (start: string, end: string) =>
-    request<SummariesPayload>(`/summaries?start=${start}&end=${end}`),
+  getSummaries: (start: string, end: string, includeWeekends: boolean) =>
+    request<SummariesPayload>(`/summaries?start=${start}&end=${end}&includeWeekends=${includeWeekends}`),
   sendSummaries: (start: string, end: string, employeeIds: number[], includeWeekends: boolean) =>
     request<{ results: SendSummariesResult[] }>('/summaries/send', {
       method: 'POST',

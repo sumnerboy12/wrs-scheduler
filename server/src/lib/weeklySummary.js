@@ -8,6 +8,8 @@ import {
   renderDayTableHtml,
   wrapEmailHtmlBody,
   lastWeekdayOnOrBefore,
+  parseISODate,
+  toISODate,
 } from './emailDates.js';
 
 export { nextWeekRange, currentWeekKey } from './emailDates.js';
@@ -28,13 +30,32 @@ Job addresses:
 
 — Rostr`;
 
+// True if every day in [startDate, endDate] that the email would actually
+// show is covered by at least one of the employee's leave periods —
+// stitched together from more than one record if that's what it takes
+// (e.g. sick leave running straight into annual leave). Weekends are
+// skipped when includeWeekends is off, matching buildDayRows exactly —
+// someone on leave Mon–Fri with nothing over the weekend is still "fully
+// on leave" as far as the email is concerned, since the table never shows
+// a weekend row for them to have anything else to say on.
+function isFullyOnLeave(leave, startDate, endDate, includeWeekends) {
+  const end = parseISODate(endDate);
+  for (let cursor = parseISODate(startDate); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
+    const dayOfWeek = cursor.getDay(); // 0 = Sunday, 6 = Saturday
+    if (!includeWeekends && (dayOfWeek === 0 || dayOfWeek === 6)) continue;
+    const iso = toISODate(cursor);
+    if (!leave.some((l) => l.start_date <= iso && l.end_date >= iso)) return false;
+  }
+  return true;
+}
+
 // Every active employee's bookings and leave that overlap [startDate,
 // endDate] — the shared query behind both the preview screen and the
 // actual send, so what an admin previews is exactly what goes out.
 // Bookings on a phase marked complete are excluded — same reasoning as
 // hiding them from the Schedule, an employee doesn't need a reminder about
 // work that's already finished.
-export function buildWeeklySummaries(startDate, endDate) {
+export function buildWeeklySummaries(startDate, endDate, includeWeekends = false) {
   const employees = db.prepare('SELECT * FROM employees WHERE active = 1 ORDER BY name').all();
 
   const assignmentStmt = db.prepare(
@@ -56,7 +77,8 @@ export function buildWeeklySummaries(startDate, endDate) {
     const items = assignmentStmt.all(employee.id, endDate, startDate);
     const leave = leaveStmt.all(employee.id, endDate, startDate);
     const nonBillable = nonBillableStmt.all(employee.id, endDate, startDate);
-    return { employee, items, leave, nonBillable };
+    const onLeaveFullPeriod = isFullyOnLeave(leave, startDate, endDate, includeWeekends);
+    return { employee, items, leave, nonBillable, onLeaveFullPeriod };
   });
 }
 

@@ -21,13 +21,13 @@ import { sendMail, isMailConfigured } from '../lib/mailer.js';
 const router = Router();
 
 router.get('/', (req, res) => {
-  const { start, end } = req.query;
+  const { start, end, includeWeekends } = req.query;
   if (!start || !end) return res.status(400).json({ error: 'start and end are required' });
 
-  const summaries = buildWeeklySummaries(start, end);
+  const summaries = buildWeeklySummaries(start, end, includeWeekends === 'true');
   res.json({
     mailConfigured: isMailConfigured(),
-    employees: summaries.map(({ employee, items, leave, nonBillable }) => ({
+    employees: summaries.map(({ employee, items, leave, nonBillable, onLeaveFullPeriod }) => ({
       id: employee.id,
       name: employee.name,
       email: employee.email,
@@ -46,6 +46,7 @@ router.get('/', (req, res) => {
         end_date: n.end_date,
         allocation_pct: n.allocation_pct,
       })),
+      on_leave_full_period: onLeaveFullPeriod,
     })),
   });
 });
@@ -79,7 +80,9 @@ router.get('/preview', (req, res) => {
   const { start, end, employeeId, includeWeekends } = req.query;
   if (!start || !end || !employeeId) return res.status(400).json({ error: 'start, end and employeeId are required' });
 
-  const summary = buildWeeklySummaries(start, end).find((s) => s.employee.id === Number(employeeId));
+  const summary = buildWeeklySummaries(start, end, includeWeekends === 'true').find(
+    (s) => s.employee.id === Number(employeeId)
+  );
   if (!summary) return res.status(404).json({ error: 'employee not found' });
 
   res.json(
@@ -108,7 +111,9 @@ router.post('/send', requireWrite, async (req, res) => {
   }
 
   const template = getTemplate();
-  const summaries = buildWeeklySummaries(start, end).filter((s) => employeeIds.includes(s.employee.id));
+  const summaries = buildWeeklySummaries(start, end, Boolean(includeWeekends)).filter((s) =>
+    employeeIds.includes(s.employee.id)
+  );
 
   const results = [];
   for (const { employee, items, leave, nonBillable } of summaries) {
