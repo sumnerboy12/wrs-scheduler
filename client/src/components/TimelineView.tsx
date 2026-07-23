@@ -1,7 +1,17 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { Timeline } from 'vis-timeline/standalone';
 import { DataSet } from 'vis-data/standalone';
+import moment from 'moment';
 import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
+
+// vis-timeline's standalone build bundles its own internal copy of moment,
+// entirely separate from this import — mutating this instance's locale has
+// no effect on that one, which is why the `moment` Timeline option below
+// (rather than just calling moment.locale()/updateLocale() and hoping) is
+// what's needed to make the week scale's day-of-week alignment (and
+// anything else date-related internally) actually use Monday as the start
+// of the week, matching the rest of the app (see startOfWeek in lib/dates.ts).
+moment.updateLocale('en', { week: { dow: 1, doy: 4 } });
 
 export interface TLGroup {
   id: string;
@@ -57,6 +67,69 @@ function snapToNearestLocalDay(date: Date): Date {
   return snapped;
 }
 
+// vis-timeline auto-picks the axis scale from the current zoom width, which
+// at wide enough zoom jumps straight from 'day' to 'month'/'year' with no
+// 'week' tier in between — too coarse to read an exact date without
+// zooming back in. Rather than guess our own day-count threshold for when
+// to override (which fights vis-timeline's own auto-scaling at every other
+// zoom level — tried that, it froze the axis so it stopped adapting at
+// all while zooming within that range), this lets vis-timeline pick
+// naturally and only steps in when the result is coarser than week.
+const COARSE_SCALES = new Set(['month', 'year']);
+
+function labelsOverlap(container: HTMLElement): boolean {
+  // Each label's own element is a full-width "slot" box spanning the whole
+  // tick interval (always touching its neighbour by design, whether the
+  // text inside is wide or not) — its own getBoundingClientRect() is
+  // useless for detecting overlap. A Range over just its text content
+  // shrink-wraps to the actual rendered glyphs instead. vis-timeline also
+  // leaves a hidden "vis-measure" helper element (used internally to
+  // measure character widths) matching this same selector — filtered out
+  // since it isn't a real label and would otherwise register as a false
+  // overlap with whatever real label happens to sit at the same position.
+  const range = document.createRange();
+  const rects = Array.from(container.querySelectorAll<HTMLElement>('.vis-time-axis .vis-text.vis-minor'))
+    .filter((el) => !el.classList.contains('vis-measure') && el.textContent?.trim())
+    .map((el) => {
+      range.selectNodeContents(el);
+      return range.getBoundingClientRect();
+    })
+    .sort((a, b) => a.left - b.left);
+  for (let i = 1; i < rects.length; i++) {
+    if (rects[i].left < rects[i - 1].right) return true;
+  }
+  return false;
+}
+
+function reconcileMinimumWeekScale(timeline: Timeline, container: HTMLElement) {
+  // Clears any override from a previous call so vis-timeline re-picks a
+  // genuine auto scale for the *current* window, rather than seeing
+  // whatever we forced last time reflected back at us.
+  timeline.setOptions({ timeAxis: {} });
+  // Core._redraw is itself throttled to one requestAnimationFrame (see
+  // vis-timeline's own source), so the scale this just picked isn't
+  // available until the frame after this setOptions call actually runs.
+  requestAnimationFrame(() => {
+    const internals = timeline as unknown as { timeAxis?: { step?: { scale?: string } } };
+    const autoScale = internals.timeAxis?.step?.scale;
+    if (!autoScale || !COARSE_SCALES.has(autoScale)) {
+      // Auto already landed on 'week' or finer, which — being auto — never
+      // overlaps by construction (it's what picking a wider step at wider
+      // zoom is for). Only our own forced override below bypasses that,
+      // so only that branch needs the overlap check.
+      timeline.setOptions({ showMinorLabels: true });
+      return;
+    }
+    timeline.setOptions({ timeAxis: { scale: 'week', step: 1 }, showMinorLabels: true });
+    // Forcing the scale just queued another throttled redraw — need a
+    // second frame for the actual week labels to be in the DOM before
+    // measuring whether they fit.
+    requestAnimationFrame(() => {
+      timeline.setOptions({ showMinorLabels: !labelsOverlap(container) });
+    });
+  });
+}
+
 interface Props {
   groups: TLGroup[];
   items: TLItem[];
@@ -97,9 +170,10 @@ const TimelineView = forwardRef<TimelineViewHandle, Props>(function TimelineView
 
   useEffect(() => {
     if (!containerRef.current) return;
+    const container = containerRef.current;
     const groupsData = groupsDataSet.current;
 
-    const timeline = new Timeline(containerRef.current, itemsDataSet.current, groupsData, {
+    const timeline = new Timeline(container, itemsDataSet.current, groupsData, {
       // Without an explicit height, vis-timeline sizes itself to fit every
       // row (auto-height) rather than filling its flex-constrained parent —
       // that's what was pushing the whole page into scrolling as one unit,
@@ -161,6 +235,16 @@ const TimelineView = forwardRef<TimelineViewHandle, Props>(function TimelineView
       },
       showCurrentTime: true,
       tooltip: { followMouse: true },
+      // Only overrides the week scale's label — vis-timeline's own
+      // defaults for every other scale (day, month, ...) are left alone.
+      // "D/M" (no leading zeros) rather than "DD/MM" or a month name,
+      // matching this app's day-first date convention elsewhere (see
+      // formatShortDate in lib/dates.ts).
+      format: { minorLabels: { week: 'D/M' } },
+      // Our Monday-first moment instance (see the module-level
+      // updateLocale call above) — makes the week scale's ticks land on
+      // Monday instead of vis-timeline's own bundled moment's Sunday.
+      moment,
     });
 
     timeline.on('doubleClick', (props: any) => {
@@ -175,7 +259,11 @@ const TimelineView = forwardRef<TimelineViewHandle, Props>(function TimelineView
 
     timeline.on('rangechanged', (props: any) => {
       callbacksRef.current.onWindowChange(props.start, props.end);
+      reconcileMinimumWeekScale(timeline, container);
     });
+    // rangechanged only fires on a *change* — set the initial window's
+    // scale too, since mounting with a restored range doesn't count as one.
+    reconcileMinimumWeekScale(timeline, container);
 
     // Fires on every DataSet .update() to the groups — including the one
     // vis-timeline's own toggleGroupShowNested makes internally on a
