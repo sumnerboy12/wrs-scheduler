@@ -324,9 +324,28 @@ export default function SchedulePage() {
     setWindow(presetWindow(p, centerRef.current));
   };
 
+  // Days between the window's left edge and today when jumping to it —
+  // leaves a little just-past context on screen to the left of "now"
+  // rather than plonking today right at the edge, while still keeping
+  // each preset's usual total span (matching presetWindow below). Scaled
+  // to each preset's own span rather than one fixed offset for all of
+  // them — 2 days of lead-in reads fine at Week zoom but would be most of
+  // the visible range at Day zoom, or barely noticeable at Quarter zoom.
+  const TODAY_LEFT_OFFSET_DAYS: Record<ZoomPreset, number> = { day: 1, week: 2, month: 5, quarter: 10 };
+
   const goToday = () => {
-    centerRef.current = new Date();
-    setWindow(presetWindow(preset, centerRef.current));
+    const today = new Date();
+    const start = addDays(today, -TODAY_LEFT_OFFSET_DAYS[preset]);
+    const end =
+      preset === 'day'
+        ? addDays(start, 3)
+        : preset === 'week'
+          ? addDays(start, 14)
+          : preset === 'month'
+            ? addMonths(start, 1)
+            : addMonths(start, 3);
+    centerRef.current = new Date((start.getTime() + end.getTime()) / 2);
+    setWindow({ start, end });
   };
 
   const handleWindowChange = (start: Date, end: Date) => {
@@ -569,20 +588,25 @@ export default function SchedulePage() {
           // Sits in the otherwise-dead corner above the label column and to
           // the left of the time axis — an absolutely positioned sibling
           // rather than anything injected into vis-timeline's own DOM,
-          // which it fully owns and redraws on every data change.
-          <div style={{ position: 'absolute', top: 6, left: 6, zIndex: 1, display: 'flex', gap: 4 }}>
+          // which it fully owns and redraws on every data change. Sized to
+          // fit within the axis header's own most-compressed height (~26px,
+          // once zoomed out far enough that its date labels hide entirely —
+          // see reconcileTimeAxisScale in TimelineView.tsx) rather than the
+          // header's normal, roomier height, so the buttons never spill
+          // past it into the row area underneath.
+          <div style={{ position: 'absolute', top: 3, left: 4, zIndex: 1, display: 'flex', gap: 4 }}>
             <button
               className="btn"
               aria-label="Collapse all jobs"
               title="Collapse all jobs"
-              style={{ padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ padding: '2px 4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               onClick={() => timelineViewRef.current?.collapseAllGroups()}
             >
               {/* Two chevrons pointing up/together — rows collapsing away.
                   Coordinates are the standard Lucide "chevrons-up" glyph:
                   its vertical extent (y 6 to 18) is already centred on a
                   24x24 viewBox, unlike the ad hoc points tried earlier. */}
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M7 11l5-5 5 5" />
                 <path d="M7 18l5-5 5 5" />
               </svg>
@@ -591,12 +615,12 @@ export default function SchedulePage() {
               className="btn"
               aria-label="Expand all jobs"
               title="Expand all jobs"
-              style={{ padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ padding: '2px 4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               onClick={() => timelineViewRef.current?.expandAllGroups()}
             >
               {/* Two chevrons pointing down/apart — rows opening up. Same
                   centred-on-24x24 basis as the collapse icon above. */}
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M7 6l5 5 5-5" />
                 <path d="M7 13l5 5 5-5" />
               </svg>

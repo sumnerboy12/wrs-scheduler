@@ -67,41 +67,57 @@ function snapToNearestLocalDay(date: Date): Date {
   return snapped;
 }
 
-// vis-timeline auto-picks the axis scale from the current zoom width, which
-// at wide enough zoom jumps straight from 'day' to 'month'/'year' with no
-// 'week' tier in between — too coarse to read an exact date without
-// zooming back in. Rather than guess our own day-count threshold for when
-// to override (which fights vis-timeline's own auto-scaling at every other
-// zoom level — tried that, it froze the axis so it stopped adapting at
-// all while zooming within that range), this lets vis-timeline pick
-// naturally and only steps in when the result is coarser than week.
-const COARSE_SCALES = new Set(['month', 'year']);
+// vis-timeline's own auto-picked axis scale is conservative about density —
+// at roughly one-to-two-week zoom it labels every other day rather than
+// every day, and at wider zoom it jumps straight from 'day' to 'month'/
+// 'year' with no 'week' tier in between, even where daily or weekly labels
+// would actually still fit comfortably. 'week'/'month'/'year' auto-picks,
+// and a 'day' auto-pick with a step coarser than 1, are the only ones
+// worth second-guessing — anything finer (weekday, hour, minute, ...), or
+// 'day' already at step 1, is already as granular as it can usefully be,
+// and forcing a scale there would freeze the axis instead of letting it
+// keep adapting while zooming in closer (tried unconditionally forcing a
+// scale once already; that's exactly what broke).
+const RECONSIDER_SCALES = new Set(['week', 'month', 'year']);
+
+// Above this fraction of labels actually being clipped, the scale counts
+// as not fitting.
+const CLIPPED_TOLERANCE = 0.3;
 
 function labelsOverlap(container: HTMLElement): boolean {
   // Each label's own element is a full-width "slot" box spanning the whole
-  // tick interval (always touching its neighbour by design, whether the
-  // text inside is wide or not) — its own getBoundingClientRect() is
-  // useless for detecting overlap. A Range over just its text content
-  // shrink-wraps to the actual rendered glyphs instead. vis-timeline also
-  // leaves a hidden "vis-measure" helper element (used internally to
-  // measure character widths) matching this same selector — filtered out
-  // since it isn't a real label and would otherwise register as a false
-  // overlap with whatever real label happens to sit at the same position.
-  const range = document.createRange();
-  const rects = Array.from(container.querySelectorAll<HTMLElement>('.vis-time-axis .vis-text.vis-minor'))
-    .filter((el) => !el.classList.contains('vis-measure') && el.textContent?.trim())
-    .map((el) => {
-      range.selectNodeContents(el);
-      return range.getBoundingClientRect();
-    })
-    .sort((a, b) => a.left - b.left);
-  for (let i = 1; i < rects.length; i++) {
-    if (rects[i].left < rects[i - 1].right) return true;
-  }
-  return false;
+  // tick interval, styled `overflow: hidden; white-space: nowrap` (see
+  // vis-timeline's own stylesheet) — text that doesn't fit gets silently
+  // clipped rather than visibly overlapping its neighbour, so a label that
+  // reads as truncated digit soup at a glance never shows up as two
+  // glyphs occupying the same pixels. scrollWidth > clientWidth is the
+  // standard way to detect that clipping is actually happening. vis-
+  // timeline also leaves a hidden "vis-measure" helper element (used
+  // internally to measure character widths) matching this same selector,
+  // excluded since it isn't a real label.
+  const labels = Array.from(container.querySelectorAll<HTMLElement>('.vis-time-axis .vis-text.vis-minor'))
+    .filter((el) => !el.classList.contains('vis-measure') && el.textContent?.trim());
+  if (labels.length === 0) return false;
+  // The visible window's start/end, and every month boundary crossed by
+  // week-scale ticks, rarely land exactly on a tick boundary — each of
+  // those produces one genuinely (and harmlessly) narrower partial slot,
+  // not evidence that the scale itself is too dense. Only once a
+  // substantial fraction of *all* labels are clipped does that mean actual
+  // overcrowding rather than a handful of expected boundary slivers.
+  const clippedCount = labels.filter((el) => el.scrollWidth > el.clientWidth).length;
+  return clippedCount / labels.length > CLIPPED_TOLERANCE;
 }
 
-function reconcileMinimumWeekScale(timeline: Timeline, container: HTMLElement) {
+// Forces a candidate scale, waits the one frame its throttled redraw needs,
+// then reports whether the resulting labels actually fit.
+function tryScale(timeline: Timeline, container: HTMLElement, candidate: { scale: 'day' | 'week'; step: number }): Promise<boolean> {
+  timeline.setOptions({ timeAxis: candidate, showMinorLabels: true });
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => resolve(!labelsOverlap(container)));
+  });
+}
+
+function reconcileTimeAxisScale(timeline: Timeline, container: HTMLElement) {
   // Clears any override from a previous call so vis-timeline re-picks a
   // genuine auto scale for the *current* window, rather than seeing
   // whatever we forced last time reflected back at us.
@@ -109,24 +125,25 @@ function reconcileMinimumWeekScale(timeline: Timeline, container: HTMLElement) {
   // Core._redraw is itself throttled to one requestAnimationFrame (see
   // vis-timeline's own source), so the scale this just picked isn't
   // available until the frame after this setOptions call actually runs.
-  requestAnimationFrame(() => {
-    const internals = timeline as unknown as { timeAxis?: { step?: { scale?: string } } };
+  requestAnimationFrame(async () => {
+    const internals = timeline as unknown as { timeAxis?: { step?: { scale?: string; step?: number } } };
     const autoScale = internals.timeAxis?.step?.scale;
-    if (!autoScale || !COARSE_SCALES.has(autoScale)) {
-      // Auto already landed on 'week' or finer, which — being auto — never
-      // overlaps by construction (it's what picking a wider step at wider
-      // zoom is for). Only our own forced override below bypasses that,
-      // so only that branch needs the overlap check.
+    const autoStep = internals.timeAxis?.step?.step;
+    const dayStepTooCoarse = autoScale === 'day' && autoStep !== undefined && autoStep > 1;
+    if (!autoScale || (!dayStepTooCoarse && !RECONSIDER_SCALES.has(autoScale))) {
+      // Already as fine as it can usefully be (weekday, hour, minute, ...)
+      // or already exactly 'day' with every day labelled — leave it alone.
       timeline.setOptions({ showMinorLabels: true });
       return;
     }
-    timeline.setOptions({ timeAxis: { scale: 'week', step: 1 }, showMinorLabels: true });
-    // Forcing the scale just queued another throttled redraw — need a
-    // second frame for the actual week labels to be in the DOM before
-    // measuring whether they fit.
-    requestAnimationFrame(() => {
-      timeline.setOptions({ showMinorLabels: !labelsOverlap(container) });
-    });
+
+    // Prefer day-level labels at any zoom width where they'll actually
+    // fit, not just the narrow range vis-timeline's own auto-scale would
+    // have picked 'day' for — falling back to week, then to hiding
+    // entirely, only once the next-finer tier genuinely doesn't fit.
+    if (await tryScale(timeline, container, { scale: 'day', step: 1 })) return;
+    if (await tryScale(timeline, container, { scale: 'week', step: 1 })) return;
+    timeline.setOptions({ showMinorLabels: false });
   });
 }
 
@@ -259,11 +276,11 @@ const TimelineView = forwardRef<TimelineViewHandle, Props>(function TimelineView
 
     timeline.on('rangechanged', (props: any) => {
       callbacksRef.current.onWindowChange(props.start, props.end);
-      reconcileMinimumWeekScale(timeline, container);
+      reconcileTimeAxisScale(timeline, container);
     });
     // rangechanged only fires on a *change* — set the initial window's
     // scale too, since mounting with a restored range doesn't count as one.
-    reconcileMinimumWeekScale(timeline, container);
+    reconcileTimeAxisScale(timeline, container);
 
     // Fires on every DataSet .update() to the groups — including the one
     // vis-timeline's own toggleGroupShowNested makes internally on a
