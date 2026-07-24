@@ -46,13 +46,6 @@ export function nextWeekRange() {
   return { start: toISODate(nextMonday), end: toISODate(sunday) };
 }
 
-// Identifies "this calendar week" (as the ISO date of its Monday) so a
-// scheduler can tell whether it's already sent this week's batch, even if
-// it gets checked many times on send day before the next week rolls over.
-export function currentWeekKey(date = new Date()) {
-  return toISODate(startOfWeek(date));
-}
-
 // The last weekday (Mon–Fri) on or before `iso` — used to compute the
 // {{end_date}} shown in a summary email when weekends are excluded from
 // the table, so the greeting doesn't claim a range running through a

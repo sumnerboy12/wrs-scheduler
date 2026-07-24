@@ -105,19 +105,20 @@ export function saveJobAutoSendConfig({ enabled, dayOfWeek, time, includeWeekend
   return getJobAutoSendConfig();
 }
 
-// Tracks the calendar week (see currentWeekKey) the job auto-send last
-// actually ran for — kept separate from the employee auto-send's own
-// last-run marker so the two schedules can't interfere with each other.
-export function getJobAutoSendLastRunWeek() {
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'summary_job_auto_send_last_run'").get();
-  return row ? row.value : null;
+// Tracks the exact [start, end] range last sent — see getAutoSendLastSentRange
+// in weeklySummary.js for the full reasoning — kept as a separate setting
+// from the employee auto-send's own marker so the two schedules can't
+// interfere with each other.
+export function getJobAutoSendLastSentRange() {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'summary_job_auto_send_last_sent_range'").get();
+  return row ? JSON.parse(row.value) : null;
 }
 
-export function setJobAutoSendLastRunWeek(weekKey) {
+export function setJobAutoSendLastSentRange(start, end) {
   db.prepare(
-    `INSERT INTO settings (key, value) VALUES ('summary_job_auto_send_last_run', ?)
+    `INSERT INTO settings (key, value) VALUES ('summary_job_auto_send_last_sent_range', ?)
      ON CONFLICT (key) DO UPDATE SET value = excluded.value`
-  ).run(weekKey);
+  ).run(JSON.stringify({ start, end }));
 }
 
 // One row per day, per phase that has anyone booked that day — every

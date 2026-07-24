@@ -61,6 +61,8 @@ export default function JobSummariesTab() {
   const [{ start, end }, setRange] = useState(loadPersistedRange);
   const [loading, setLoading] = useState(true);
   const [mailConfigured, setMailConfigured] = useState(true);
+  const [alreadySent, setAlreadySent] = useState(false);
+  const [markingSent, setMarkingSent] = useState(false);
   const [jobs, setJobs] = useState<JobSummary[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [sending, setSending] = useState(false);
@@ -90,6 +92,7 @@ export default function JobSummariesTab() {
       .then((data) => {
         setJobs(data.jobs);
         setMailConfigured(data.mailConfigured);
+        setAlreadySent(data.alreadySent);
         // Pre-check anyone who actually has crew booked this range — an
         // empty summary is more often "nothing to say" than "please email".
         setSelected(new Set(data.jobs.filter((j) => j.items.length > 0).map((j) => j.id)));
@@ -127,6 +130,23 @@ export default function JobSummariesTab() {
       setError(e instanceof Error ? e.message : 'Failed to send');
     } finally {
       setSending(false);
+    }
+  };
+
+  // See EmployeeSummariesTab's handleMarkSent for the full reasoning —
+  // deliberately separate from handleSend so sending to one or two
+  // supervisors ad hoc never silently suppresses the scheduled batch for
+  // everyone else.
+  const handleMarkSent = async () => {
+    setMarkingSent(true);
+    setError(null);
+    try {
+      await api.markJobSummariesSent(start, end);
+      setAlreadySent(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to mark as sent');
+    } finally {
+      setMarkingSent(false);
     }
   };
 
@@ -229,6 +249,34 @@ export default function JobSummariesTab() {
         <span style={{ color: 'var(--text-dim)' }}>to</span>
         <input type="date" value={end} onChange={(e) => setRange((r) => ({ ...r, end: e.target.value }))} />
       </div>
+
+      {!loading && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              padding: '2px 8px',
+              borderRadius: 999,
+              color: alreadySent ? 'var(--accent)' : 'var(--text-dim)',
+              background: alreadySent ? 'var(--panel-alt)' : 'transparent',
+            }}
+          >
+            {alreadySent ? 'Already sent for these dates' : 'Not yet sent for these dates'}
+          </span>
+          {!isReadOnly && !alreadySent && (
+            <button
+              className="btn"
+              onClick={handleMarkSent}
+              disabled={markingSent}
+              style={{ fontSize: 11, padding: '2px 8px' }}
+              title="Flags these dates as already sent so the scheduled auto-send skips them — use this if you've sent this batch some other way, not for an ad-hoc resend to one or two supervisors."
+            >
+              {markingSent ? 'Marking…' : 'Manually sent'}
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="card">
         {loading ? (

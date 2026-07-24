@@ -7,6 +7,8 @@ import {
   saveTemplate,
   getAutoSendConfig,
   saveAutoSendConfig,
+  getAutoSendLastSentRange,
+  setAutoSendLastSentRange,
 } from '../lib/weeklySummary.js';
 import {
   buildJobCrewSummaries,
@@ -15,10 +17,18 @@ import {
   saveJobTemplate,
   getJobAutoSendConfig,
   saveJobAutoSendConfig,
+  getJobAutoSendLastSentRange,
+  setJobAutoSendLastSentRange,
 } from '../lib/jobSummary.js';
 import { sendMail, isMailConfigured } from '../lib/mailer.js';
 
 const router = Router();
+
+// True if the last range sent (by the schedule firing, or an admin's
+// "mark as sent" click) is exactly the range currently being looked at —
+// used to show "already sent" for whichever dates are selected, not just
+// "this calendar week".
+const rangeMatches = (lastSent, start, end) => Boolean(lastSent && lastSent.start === start && lastSent.end === end);
 
 router.get('/', (req, res) => {
   const { start, end, includeWeekends } = req.query;
@@ -27,6 +37,7 @@ router.get('/', (req, res) => {
   const summaries = buildWeeklySummaries(start, end, includeWeekends === 'true');
   res.json({
     mailConfigured: isMailConfigured(),
+    alreadySent: rangeMatches(getAutoSendLastSentRange(), start, end),
     employees: summaries.map(({ employee, items, leave, nonBillable, onLeaveFullPeriod }) => ({
       id: employee.id,
       name: employee.name,
@@ -142,6 +153,18 @@ router.post('/send', requireWrite, async (req, res) => {
   res.json({ results });
 });
 
+// Deliberately separate from a plain /send — sending to a handful of
+// people (someone chasing one recipient who missed it, say) shouldn't
+// silently suppress the scheduled batch for everyone else. This only
+// fires when an admin explicitly says "treat this range as sent" (e.g.
+// after sending it some other way entirely, or catching up post-outage).
+router.post('/mark-sent', requireWrite, (req, res) => {
+  const { start, end } = req.body;
+  if (!start || !end) return res.status(400).json({ error: 'start and end are required' });
+  setAutoSendLastSentRange(start, end);
+  res.json({ alreadySent: true });
+});
+
 // --- Job supervisor crew summaries ---
 
 router.get('/jobs', (req, res) => {
@@ -151,6 +174,7 @@ router.get('/jobs', (req, res) => {
   const summaries = buildJobCrewSummaries(start, end);
   res.json({
     mailConfigured: isMailConfigured(),
+    alreadySent: rangeMatches(getJobAutoSendLastSentRange(), start, end),
     jobs: summaries.map(({ job, items }) => ({
       id: job.id,
       name: job.name,
@@ -234,6 +258,15 @@ router.post('/jobs/send', requireWrite, async (req, res) => {
   }
 
   res.json({ results });
+});
+
+// See /mark-sent above — same reasoning, kept separate from the employee
+// auto-send's own marker.
+router.post('/jobs/mark-sent', requireWrite, (req, res) => {
+  const { start, end } = req.body;
+  if (!start || !end) return res.status(400).json({ error: 'start and end are required' });
+  setJobAutoSendLastSentRange(start, end);
+  res.json({ alreadySent: true });
 });
 
 export default router;

@@ -177,6 +177,7 @@ export interface EmployeeSummary {
 
 export interface SummariesPayload {
   mailConfigured: boolean;
+  alreadySent: boolean;
   employees: EmployeeSummary[];
 }
 
@@ -225,6 +226,7 @@ export interface JobSummary {
 
 export interface JobSummariesPayload {
   mailConfigured: boolean;
+  alreadySent: boolean;
   jobs: JobSummary[];
 }
 

@@ -118,6 +118,8 @@ export const api = {
   getAutoSendConfig: () => request<AutoSendConfig>('/summaries/auto-send'),
   updateAutoSendConfig: (data: AutoSendConfig) =>
     request<AutoSendConfig>('/summaries/auto-send', { method: 'PUT', body: JSON.stringify(data) }),
+  markSummariesSent: (start: string, end: string) =>
+    request<{ alreadySent: true }>('/summaries/mark-sent', { method: 'POST', body: JSON.stringify({ start, end }) }),
 
   getJobSummaries: (start: string, end: string) =>
     request<JobSummariesPayload>(`/summaries/jobs?start=${start}&end=${end}`),
@@ -136,4 +138,6 @@ export const api = {
   getJobAutoSendConfig: () => request<AutoSendConfig>('/summaries/jobs/auto-send'),
   updateJobAutoSendConfig: (data: AutoSendConfig) =>
     request<AutoSendConfig>('/summaries/jobs/auto-send', { method: 'PUT', body: JSON.stringify(data) }),
+  markJobSummariesSent: (start: string, end: string) =>
+    request<{ alreadySent: true }>('/summaries/jobs/mark-sent', { method: 'POST', body: JSON.stringify({ start, end }) }),
 };

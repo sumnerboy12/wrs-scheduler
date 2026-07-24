@@ -12,7 +12,7 @@ import {
   toISODate,
 } from './emailDates.js';
 
-export { nextWeekRange, currentWeekKey } from './emailDates.js';
+export { nextWeekRange } from './emailDates.js';
 
 const LEAVE_TYPE_LABELS = { sick: 'Sick', annual: 'Annual', acc: 'ACC', other: 'Other' };
 const NON_BILLABLE_CATEGORY_LABELS = { training: 'Training', admin: 'Admin', meeting: 'Meeting', other: 'Other' };
@@ -135,19 +135,22 @@ export function saveAutoSendConfig({ enabled, dayOfWeek, time, includeWeekends }
   return getAutoSendConfig();
 }
 
-// Tracks the calendar week (see currentWeekKey) the auto-send job last
-// actually ran for, so the scheduler's periodic check doesn't re-send the
-// same week's batch every time it ticks after the scheduled time.
-export function getAutoSendLastRunWeek() {
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'summary_auto_send_last_run'").get();
-  return row ? row.value : null;
+// Tracks the exact [start, end] range last sent — whether by the
+// schedule firing or an admin's "mark as sent" click — rather than just
+// which calendar week the send happened in. That lets both the scheduler
+// (is the range it's about to send already covered?) and the UI (has what
+// I'm looking at right now already gone out?) ask the same precise
+// question instead of an approximate "already ran this week" one.
+export function getAutoSendLastSentRange() {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'summary_auto_send_last_sent_range'").get();
+  return row ? JSON.parse(row.value) : null;
 }
 
-export function setAutoSendLastRunWeek(weekKey) {
+export function setAutoSendLastSentRange(start, end) {
   db.prepare(
-    `INSERT INTO settings (key, value) VALUES ('summary_auto_send_last_run', ?)
+    `INSERT INTO settings (key, value) VALUES ('summary_auto_send_last_sent_range', ?)
      ON CONFLICT (key) DO UPDATE SET value = excluded.value`
-  ).run(weekKey);
+  ).run(JSON.stringify({ start, end }));
 }
 
 // One row per calendar day in the range (not one row per assignment) — an

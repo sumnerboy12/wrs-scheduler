@@ -3,18 +3,17 @@ import {
   formatSummaryEmail,
   getTemplate,
   getAutoSendConfig,
-  getAutoSendLastRunWeek,
-  setAutoSendLastRunWeek,
+  getAutoSendLastSentRange,
+  setAutoSendLastSentRange,
   nextWeekRange,
-  currentWeekKey,
 } from './weeklySummary.js';
 import {
   buildJobCrewSummaries,
   formatJobSummaryEmail,
   getJobTemplate,
   getJobAutoSendConfig,
-  getJobAutoSendLastRunWeek,
-  setJobAutoSendLastRunWeek,
+  getJobAutoSendLastSentRange,
+  setJobAutoSendLastSentRange,
 } from './jobSummary.js';
 import { sendMail, isMailConfigured } from './mailer.js';
 
@@ -76,12 +75,18 @@ async function sendAutoJobSummaries(includeWeekends) {
 }
 
 // True once a week, the first tick at/after the configured day+time — and
-// only once, since the caller marks the week as done (via setLastRunWeek)
-// before the async send even starts, so an overlapping tick or a slow send
-// can't trigger a second batch for the same week.
-function shouldFireNow(config, lastRunWeek, now) {
+// only once, since the caller marks the *target range* as sent (via
+// setAutoSendLastSentRange) before the async send even starts, so an
+// overlapping tick or a slow send can't trigger a second batch for the
+// same range. Comparing the exact range rather than "which calendar week
+// this is" also means an admin's manual "mark as sent" for that same
+// upcoming range (see routes/summaries.js) suppresses this exactly the
+// same way — one shared notion of "already sent" for both paths.
+function shouldFireNow(config, lastSentRange, targetRange, now) {
   if (!config.enabled) return false;
-  if (lastRunWeek === currentWeekKey(now)) return false;
+  if (lastSentRange && lastSentRange.start === targetRange.start && lastSentRange.end === targetRange.end) {
+    return false;
+  }
 
   const [hour, minute] = config.time.split(':').map(Number);
   const scheduledMinutes = hour * 60 + minute;
@@ -92,16 +97,18 @@ function shouldFireNow(config, lastRunWeek, now) {
 function tick() {
   if (!isMailConfigured()) return;
   const now = new Date();
+  // Both auto-sends target the same upcoming week, so one shared range.
+  const targetRange = nextWeekRange();
 
   const config = getAutoSendConfig();
-  if (shouldFireNow(config, getAutoSendLastRunWeek(), now)) {
-    setAutoSendLastRunWeek(currentWeekKey(now));
+  if (shouldFireNow(config, getAutoSendLastSentRange(), targetRange, now)) {
+    setAutoSendLastSentRange(targetRange.start, targetRange.end);
     sendAutoSummaries(config.includeWeekends).catch((e) => console.error('[summary auto-send] run failed:', e));
   }
 
   const jobConfig = getJobAutoSendConfig();
-  if (shouldFireNow(jobConfig, getJobAutoSendLastRunWeek(), now)) {
-    setJobAutoSendLastRunWeek(currentWeekKey(now));
+  if (shouldFireNow(jobConfig, getJobAutoSendLastSentRange(), targetRange, now)) {
+    setJobAutoSendLastSentRange(targetRange.start, targetRange.end);
     sendAutoJobSummaries(jobConfig.includeWeekends).catch((e) => console.error('[job summary auto-send] run failed:', e));
   }
 }

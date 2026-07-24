@@ -68,6 +68,8 @@ export default function EmployeeSummariesTab() {
   const [{ start, end }, setRange] = useState(loadPersistedRange);
   const [loading, setLoading] = useState(true);
   const [mailConfigured, setMailConfigured] = useState(true);
+  const [alreadySent, setAlreadySent] = useState(false);
+  const [markingSent, setMarkingSent] = useState(false);
   const [employees, setEmployees] = useState<EmployeeSummary[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [sending, setSending] = useState(false);
@@ -97,6 +99,7 @@ export default function EmployeeSummariesTab() {
       .then((data) => {
         setEmployees(data.employees);
         setMailConfigured(data.mailConfigured);
+        setAlreadySent(data.alreadySent);
         // Pre-check anyone who actually has bookings or leave this range —
         // an empty summary is more often "nothing to say" than "please
         // email them". Someone on leave for the entire range is excluded
@@ -147,6 +150,25 @@ export default function EmployeeSummariesTab() {
       setError(e instanceof Error ? e.message : 'Failed to send');
     } finally {
       setSending(false);
+    }
+  };
+
+  // Lets an admin flag this range as already handled — e.g. sent some other
+  // way entirely, or catching up after an outage — without that being an
+  // automatic side effect of an ordinary send (which might only cover one
+  // or two people, not the whole week's batch). Deliberately separate from
+  // handleSend so a partial manual send never silently suppresses the
+  // scheduled auto-send for everyone else.
+  const handleMarkSent = async () => {
+    setMarkingSent(true);
+    setError(null);
+    try {
+      await api.markSummariesSent(start, end);
+      setAlreadySent(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to mark as sent');
+    } finally {
+      setMarkingSent(false);
     }
   };
 
@@ -249,6 +271,34 @@ export default function EmployeeSummariesTab() {
         <span style={{ color: 'var(--text-dim)' }}>to</span>
         <input type="date" value={end} onChange={(e) => setRange((r) => ({ ...r, end: e.target.value }))} />
       </div>
+
+      {!loading && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              padding: '2px 8px',
+              borderRadius: 999,
+              color: alreadySent ? 'var(--accent)' : 'var(--text-dim)',
+              background: alreadySent ? 'var(--panel-alt)' : 'transparent',
+            }}
+          >
+            {alreadySent ? 'Already sent for these dates' : 'Not yet sent for these dates'}
+          </span>
+          {!isReadOnly && !alreadySent && (
+            <button
+              className="btn"
+              onClick={handleMarkSent}
+              disabled={markingSent}
+              style={{ fontSize: 11, padding: '2px 8px' }}
+              title="Flags these dates as already sent so the scheduled auto-send skips them — use this if you've sent this batch some other way, not for an ad-hoc resend to one or two people."
+            >
+              {markingSent ? 'Marking…' : 'Manually sent'}
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="card">
         {loading ? (
