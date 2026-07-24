@@ -69,6 +69,7 @@ export default function EmployeeSummariesTab() {
   const [loading, setLoading] = useState(true);
   const [mailConfigured, setMailConfigured] = useState(true);
   const [alreadySent, setAlreadySent] = useState(false);
+  const [lastSentEnd, setLastSentEnd] = useState<string | null>(null);
   const [markingSent, setMarkingSent] = useState(false);
   const [employees, setEmployees] = useState<EmployeeSummary[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -100,6 +101,7 @@ export default function EmployeeSummariesTab() {
         setEmployees(data.employees);
         setMailConfigured(data.mailConfigured);
         setAlreadySent(data.alreadySent);
+        setLastSentEnd(data.lastSentEnd);
         // Pre-check anyone who actually has bookings or leave this range —
         // an empty summary is more often "nothing to say" than "please
         // email them". Someone on leave for the entire range is excluded
@@ -221,6 +223,13 @@ export default function EmployeeSummariesTab() {
     setEditingAutoSend(true);
   };
 
+  // A range that's entirely before whatever was last sent is old news — a
+  // plain "not sent" reading would be misleading (it's not that anyone
+  // forgot it, it's just superseded by a later batch), so the pill says so
+  // explicitly instead, and the "mark as sent" action hides since marking a
+  // stale range doesn't mean anything.
+  const isBeforeLastSent = lastSentEnd !== null && end < lastSentEnd;
+
   const openPreview = async (emp: EmployeeSummary) => {
     setPreviewing(emp);
     setPreviewData(null);
@@ -284,9 +293,13 @@ export default function EmployeeSummariesTab() {
               background: alreadySent ? 'var(--panel-alt)' : 'transparent',
             }}
           >
-            {alreadySent ? 'Already sent for these dates' : 'Not yet sent for these dates'}
+            {isBeforeLastSent
+              ? 'Past period — not tracked'
+              : alreadySent
+                ? 'Already sent for these dates'
+                : 'Not yet sent for these dates'}
           </span>
-          {!isReadOnly && !alreadySent && (
+          {!isReadOnly && !alreadySent && !isBeforeLastSent && (
             <button
               className="btn"
               onClick={handleMarkSent}

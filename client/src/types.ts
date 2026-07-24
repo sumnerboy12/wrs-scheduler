@@ -178,6 +178,7 @@ export interface EmployeeSummary {
 export interface SummariesPayload {
   mailConfigured: boolean;
   alreadySent: boolean;
+  lastSentEnd: string | null;
   employees: EmployeeSummary[];
 }
 
@@ -227,6 +228,7 @@ export interface JobSummary {
 export interface JobSummariesPayload {
   mailConfigured: boolean;
   alreadySent: boolean;
+  lastSentEnd: string | null;
   jobs: JobSummary[];
 }
 

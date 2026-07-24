@@ -35,9 +35,11 @@ router.get('/', (req, res) => {
   if (!start || !end) return res.status(400).json({ error: 'start and end are required' });
 
   const summaries = buildWeeklySummaries(start, end, includeWeekends === 'true');
+  const lastSent = getAutoSendLastSentRange();
   res.json({
     mailConfigured: isMailConfigured(),
-    alreadySent: rangeMatches(getAutoSendLastSentRange(), start, end),
+    alreadySent: rangeMatches(lastSent, start, end),
+    lastSentEnd: lastSent?.end ?? null,
     employees: summaries.map(({ employee, items, leave, nonBillable, onLeaveFullPeriod }) => ({
       id: employee.id,
       name: employee.name,
@@ -172,9 +174,11 @@ router.get('/jobs', (req, res) => {
   if (!start || !end) return res.status(400).json({ error: 'start and end are required' });
 
   const summaries = buildJobCrewSummaries(start, end);
+  const lastSent = getJobAutoSendLastSentRange();
   res.json({
     mailConfigured: isMailConfigured(),
-    alreadySent: rangeMatches(getJobAutoSendLastSentRange(), start, end),
+    alreadySent: rangeMatches(lastSent, start, end),
+    lastSentEnd: lastSent?.end ?? null,
     jobs: summaries.map(({ job, items }) => ({
       id: job.id,
       name: job.name,

@@ -62,6 +62,7 @@ export default function JobSummariesTab() {
   const [loading, setLoading] = useState(true);
   const [mailConfigured, setMailConfigured] = useState(true);
   const [alreadySent, setAlreadySent] = useState(false);
+  const [lastSentEnd, setLastSentEnd] = useState<string | null>(null);
   const [markingSent, setMarkingSent] = useState(false);
   const [jobs, setJobs] = useState<JobSummary[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -93,6 +94,7 @@ export default function JobSummariesTab() {
         setJobs(data.jobs);
         setMailConfigured(data.mailConfigured);
         setAlreadySent(data.alreadySent);
+        setLastSentEnd(data.lastSentEnd);
         // Pre-check anyone who actually has crew booked this range — an
         // empty summary is more often "nothing to say" than "please email".
         setSelected(new Set(data.jobs.filter((j) => j.items.length > 0).map((j) => j.id)));
@@ -199,6 +201,10 @@ export default function JobSummariesTab() {
     setEditingAutoSend(true);
   };
 
+  // See EmployeeSummariesTab for the full reasoning — a range entirely
+  // before whatever was last sent doesn't need a sent/not-sent status shown.
+  const isBeforeLastSent = lastSentEnd !== null && end < lastSentEnd;
+
   const openPreview = async (job: JobSummary) => {
     setPreviewing(job);
     setPreviewData(null);
@@ -262,9 +268,13 @@ export default function JobSummariesTab() {
               background: alreadySent ? 'var(--panel-alt)' : 'transparent',
             }}
           >
-            {alreadySent ? 'Already sent for these dates' : 'Not yet sent for these dates'}
+            {isBeforeLastSent
+              ? 'Past period — not tracked'
+              : alreadySent
+                ? 'Already sent for these dates'
+                : 'Not yet sent for these dates'}
           </span>
-          {!isReadOnly && !alreadySent && (
+          {!isReadOnly && !alreadySent && !isBeforeLastSent && (
             <button
               className="btn"
               onClick={handleMarkSent}
