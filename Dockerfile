@@ -16,6 +16,15 @@ RUN npm ci --omit=dev
 COPY server/ ./
 COPY --from=client-build /app/client/dist /app/client/dist
 
+# Alpine has no timezone database installed by default, and the container
+# clock otherwise runs on UTC regardless of the host machine's own
+# timezone — without both of these, every schedule the app computes off
+# `new Date()` (weekly summary auto-send day/time, "today" on the
+# Schedule, etc.) would silently run 12-13 hours off from the NZ wall-clock
+# time an admin actually configured.
+RUN apk add --no-cache tzdata
+ENV TZ=Pacific/Auckland
+
 ENV PORT=4000
 EXPOSE 4000
 # SQLite data file lives here — mount a host volume over this path so data
