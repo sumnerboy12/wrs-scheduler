@@ -72,10 +72,6 @@ th {
   letter-spacing: 0.03em;
 }
 
-tbody tr:nth-child(even) {
-  background: var(--panel-alt);
-}
-
 .btn {
   background: var(--panel-alt);
   border: 1px solid var(--border);
@@ -252,7 +248,11 @@ tbody tr:nth-child(even) {
 }
 
 .vis-labelset .vis-label.tl-job-group {
-  border-left: 3px solid var(--job-color, var(--border));
+  /* Deliberately thicker and full-opacity vs. a phase row's 3px/45%-opacity
+     border (see .tl-phase-group below) — alongside the job name's bold
+     weight, this is the other half of telling a job row apart from its
+     own phase rows at a glance. */
+  border-left: 5px solid var(--job-color, var(--border));
 }
 
 .vis-labelset .vis-label.tl-job-group .vis-inner {
@@ -275,7 +275,9 @@ tbody tr:nth-child(even) {
      to its own indent/width defaults for "unknown" levels. Pin our own
      fixed values so the row looks identical on every redraw. */
   padding-left: 0 !important;
-  border-left: 3px solid color-mix(in srgb, var(--job-color, var(--border)) 45%, transparent);
+  /* Thinner and much fainter than a job row's 5px/full-opacity border (see
+     .tl-job-group) — deliberately the quieter of the two. */
+  border-left: 2px solid color-mix(in srgb, var(--job-color, var(--border)) 30%, transparent);
 }
 
 /* The real cause of phase rows drifting right after a collapse/expand:
@@ -315,19 +317,24 @@ tbody tr:nth-child(even) {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 18px;
-  height: 18px;
+  /* Smaller and much fainter than a job row's 10px solid colour dot — a
+     phase row's own marker shouldn't out-weigh the job row it sits under. */
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--job-color, var(--accent)) 35%, var(--panel));
-  color: var(--text);
-  font-size: 10px;
+  background: color-mix(in srgb, var(--job-color, var(--accent)) 20%, var(--panel));
+  color: var(--text-dim);
+  font-size: 9px;
   font-weight: 600;
 }
 
 .tl-phase-name {
-  font-size: 13px;
+  /* Smaller and dimmer than a job row's name (13px, bold, full-brightness
+     — see the jobContent build in SchedulePage.tsx) — the two together are
+     what keep a phase row reading as subordinate rather than a peer. */
+  font-size: 12px;
   font-weight: 400;
-  color: var(--text);
+  color: var(--text-dim);
 }
 
 .tl-phase-meta {
@@ -384,24 +391,6 @@ tbody tr:nth-child(even) {
 
 .vis-foreground .vis-group {
   border-color: var(--border) !important;
-}
-
-/* Alternating row backgrounds — flat rows (Employee view). */
-.vis-labelset .vis-label.tl-row-alt,
-.vis-foreground .vis-group.tl-row-alt {
-  background: var(--panel-alt) !important;
-}
-
-/* Job view: alternate per job (header + its phases share a band), blended
-   with the existing header/phase shading rather than replacing it. */
-.vis-labelset .vis-label.vis-nesting-group.tl-row-alt,
-.vis-foreground .vis-group.vis-nesting-group.tl-row-alt {
-  background: color-mix(in srgb, var(--panel-alt) 88%, white 12%) !important;
-}
-
-.vis-labelset .vis-label.vis-nested-group.tl-row-alt,
-.vis-foreground .vis-group.vis-nested-group.tl-row-alt {
-  background: color-mix(in srgb, var(--panel) 88%, white 12%) !important;
 }
 
 .vis-panel.vis-top,

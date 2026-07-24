@@ -171,10 +171,9 @@ export default function SchedulePage() {
     if (groupMode === 'employee') {
       const groups: TLGroup[] = data.employees
         .filter((e) => e.active)
-        .map((e, idx) => ({
+        .map((e) => ({
           id: `emp-${e.id}`,
           content: `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${e.color};margin-right:8px;"></span><span style="font-size:14px;">${escapeHtml(e.name)}</span>`,
-          className: idx % 2 === 1 ? 'tl-row-alt' : undefined,
         }));
 
       const items: TLItem[] = visibleAssignments.map((a) => {
@@ -202,14 +201,8 @@ export default function SchedulePage() {
     const groups: TLGroup[] = [];
     const items: TLItem[] = [...dateBackgroundItems];
 
-    let jobIndex = 0;
     for (const job of data.jobs) {
       if (!jobVisible(job)) continue;
-      // Band the whole job — its header row and every phase row — as one
-      // unit, alternating per job, so adjacent jobs stay easy to tell apart
-      // without fighting the existing header-vs-phase shading.
-      const altClass = jobIndex % 2 === 1 ? ' tl-row-alt' : '';
-      jobIndex++;
       const jobPhases = data.phases.filter((p) => p.job_id === job.id && !p.complete);
       // Peak concurrent actual staff across the job's timeline (distinct
       // employees actually working on the same day, maxed over every
@@ -237,16 +230,18 @@ export default function SchedulePage() {
       const showCode = job.status !== 'pipeline' && job.status !== 'quoted' && job.code;
       const showProbability = (job.status === 'pipeline' || job.status === 'quoted') && job.probability != null;
       const jobMetaLine = `${clientPill} · ${JOB_STATUS_LABELS[job.status]}${showCode ? ` · ${escapeHtml(job.code ?? '')}` : ''}${showProbability ? ` · ${job.probability}%` : ''}`;
-      // font-weight:400 is explicit, not just "not bold" — .vis-nesting-group
-      // (index.css) sets font-weight:600 on the whole label, which a plain
-      // span would otherwise inherit.
-      const jobContent = `${jobSwatch}<span style="font-size:13px;font-weight:400;">${escapeHtml(job.name)}</span><div class="tl-job-meta" style="font-size:12px;color:var(--text-dim);margin-top:4px;">${jobMetaLine}</div>`;
+      // font-weight:600 explicit (not just inherited from .vis-nesting-group)
+      // so it stays bold even though that class's own font-weight only
+      // covers .tl-job-meta 's ordinary text, not this span specifically —
+      // bold here is the main visual cue that separates a job row from its
+      // (deliberately regular-weight, see .tl-phase-name) phase rows below it.
+      const jobContent = `${jobSwatch}<span style="font-size:13px;font-weight:600;">${escapeHtml(job.name)}</span><div class="tl-job-meta" style="font-size:12px;color:var(--text-dim);margin-top:4px;">${jobMetaLine}</div>`;
 
       groups.push({
         id: `job-${job.id}`,
         content: jobContent,
         nestedGroups: jobPhases.map((p) => `phase-${p.id}`),
-        className: `tl-job-group${altClass}`,
+        className: 'tl-job-group',
         style: `--job-color: ${jobColor}`,
         // Re-applied on every rebuild (search, status filter, a moved
         // assignment, etc. all rebuild this array) so an incidental
@@ -259,7 +254,7 @@ export default function SchedulePage() {
         ).size;
         const phaseMetaLine = `${formatShortDate(phase.start_date)} – ${formatShortDate(phase.end_date)}${phaseStaffCount ? ` · ${phaseStaffCount} staff` : ''}`;
         const phaseContent = `<div class="tl-phase-title-row"><span class="tl-phase-index">${phase.sequence}</span><strong class="tl-phase-name">${escapeHtml(phase.name)}</strong></div><div class="tl-phase-meta">${phaseMetaLine}</div>`;
-        groups.push({ id: `phase-${phase.id}`, content: phaseContent, className: `tl-phase-group${altClass}`, style: `--job-color: ${jobColor}` });
+        groups.push({ id: `phase-${phase.id}`, content: phaseContent, className: 'tl-phase-group', style: `--job-color: ${jobColor}` });
 
         // Show any estimate as its own placeholder bar alongside whatever
         // real staff bars this phase already has.
